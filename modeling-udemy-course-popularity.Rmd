@@ -26,6 +26,33 @@ Do not include the names of the group members at the outset of the report.
 
 ***
 
+***
+*** Delete before submitting
+
+Breakdown of points for analysis report:
+
+Use of Statistical Methodology: 20pts 
+- Have you used the appropriate methods for your dataset?  
+- Have you applied them correctly? 
+
+Interpretation of Results: 20pts 
+- Do you arrive at the correct statistical conclusions from the analyses you perform? 
+
+Discussion of Results: 20pts 
+- Do you discuss your analysis results in the context of the data? 
+
+Use of R Programming: 20pts 
+- Similar to HW expectation: Does your code perform the desired task?  
+- Is your code readable? 
+
+
+Organization and Presentation: 20pts 
+- Similar to HW expectation: Is your report easy to read?  
+- Does it use RMarkdown well?  
+- Is it written in a manner such that a reader does not already need to be familiar with the data? 
+
+***
+
 ## Introduction
 
 ***
@@ -41,20 +68,31 @@ Like the simulation project, you can assume the reader is familiar with the cour
 
 Some things to consider: 
 
-What is this data?  
-
-Where did it come from?  
-
-What are the variables?  
-
-Why is it interesting to you? 
-
-Why are you creating a model for this data?  
-
-What is the goal of this model? 
+- What is this data?  
+- Where did it come from?  
+- What are the variables?  
+- Why is it interesting to you? 
+- Why are you creating a model for this data?  
+- What is the goal of this model? 
 
 ***
 
+The dataset has 3682 records of courses, each with 12 different variables. The most important ones are:
+
+- Course title
+- Whether the course is free or paid
+- Price of course
+- Number of subscribers
+- Number of reviews
+- Number of lectures
+- Level/difficulty of course
+- Course duration (in hours)
+- Date the course was published
+- Course subject
+
+This dataset was created May 16, 2020 by a data scientist in Brazil. The data can be found here: https://www.kaggle.com/datasets/andrewmvd/udemy-courses?select=udemy_courses.csv
+
+All of our team members are working / have worked in education-related careers, so we really wanted to work on an education-based dataset. Amanda is currently an online course developer for MathWorks on Coursera, so she’s particularly interested in MOOC platform data analysis. Dani does research and analysis at a higher education institution that is planning a large expansion of online offerings.  Anand is a solutions architect at a not-for-profit and has worked on several projects to improve postsecondary education for students by enabling researchers to generate rigorous evidence and help those in the field connect research and practice. 
 
 
 ## Methods
@@ -65,35 +103,47 @@ What is the goal of this model?
 The methods section should contain the bulk of your “work.” This section will contain the bulk of the R code that is used to generate the results. Your R code is not expected to be perfect idiomatic R, but it is expected to be understood by a reader without too much effort. Use RMarkdown and code comments to your advantage to explain your code if needed. 
 
 This section should contain any information about data preparation that is performed to the original data before modelling. Then you will apply methods seen in class, which may include some of the following but are not limited to: 
-
-Multiple linear regression 
-
-Dummy variables 
-
-Interaction 
-
-Residual diagnostics 
-
-Outlier diagnostics 
-
-Transformations 
-
-Polynomial regression 
-
-Model selection 
-
+- Multiple linear regression 
+- Dummy variables 
+- Interaction 
+- Residual diagnostics 
+- Outlier diagnostics 
+- Transformations 
+- Polynomial regression 
+- Model selection 
 
 Your task is not to use as many methods as possible. Your task is to use appropriate methods to find a good model that can correctly answer a question about the dataset, and then to communicate your result effectively. Some possible items to be discussed: 
-
-Description of the original data file including description of all relevant variables. 
-
-Description of additional data preparation that you performed. 
-
-Description of the process you chose to follow. 
-
-Narrative of your step-by-step decision making process throughout the analysis as you adjusted the model and attempted to validate model assumptions. 
+- Description of the original data file including description of all relevant variables. 
+- Description of additional data preparation that you performed. 
+- Description of the process you chose to follow. 
+- Narrative of your step-by-step decision making process throughout the analysis as you adjusted the model and attempted to validate model assumptions. 
 
 ***
+
+
+```{r}
+library(readr)
+udemy = read_csv("udemy_courses.csv")
+
+```
+
+```{r}
+#View(udemy)
+library(dplyr)
+glimpse(udemy)
+summary(udemy)
+```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Anand note - Delete chunk prior to submitting.  For insights only.  We should replicate specific analysis manually.
+#install.packages("DataExplorer")
+library(DataExplorer)
+DataExplorer::create_report(udemy)
+#See report.html
+```
+
 
 
 ## Results
@@ -118,8 +168,7 @@ Some possible items to be discussed:
 *** Delete before submitting
 
 The discussion section should contain discussion of your results and should frame your results in the context of the data.  
-
-How is your final model useful? 
+- How is your final model useful? 
 
 ***
 

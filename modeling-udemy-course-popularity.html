@@ -393,6 +393,25 @@ pre code {
 <p>Do not include the names of the group members at the outset of the
 report.</p>
 <hr />
+<hr />
+<p>*** Delete before submitting</p>
+<p>Breakdown of points for analysis report:</p>
+<p>Use of Statistical Methodology: 20pts - Have you used the appropriate
+methods for your dataset?<br />
+- Have you applied them correctly?</p>
+<p>Interpretation of Results: 20pts - Do you arrive at the correct
+statistical conclusions from the analyses you perform?</p>
+<p>Discussion of Results: 20pts - Do you discuss your analysis results
+in the context of the data?</p>
+<p>Use of R Programming: 20pts - Similar to HW expectation: Does your
+code perform the desired task?<br />
+- Is your code readable?</p>
+<p>Organization and Presentation: 20pts - Similar to HW expectation: Is
+your report easy to read?<br />
+- Does it use RMarkdown well?<br />
+- Is it written in a manner such that a reader does not already need to
+be familiar with the data?</p>
+<hr />
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <hr />
@@ -407,13 +426,45 @@ would not need to load your data to understand your report.</p>
 <p>Like the simulation project, you can assume the reader is familiar
 with the course concepts, but not your data.</p>
 <p>Some things to consider:</p>
-<p>What is this data?</p>
-<p>Where did it come from?</p>
-<p>What are the variables?</p>
-<p>Why is it interesting to you?</p>
-<p>Why are you creating a model for this data?</p>
-<p>What is the goal of this model?</p>
+<ul>
+<li>What is this data?<br />
+</li>
+<li>Where did it come from?<br />
+</li>
+<li>What are the variables?<br />
+</li>
+<li>Why is it interesting to you?</li>
+<li>Why are you creating a model for this data?<br />
+</li>
+<li>What is the goal of this model?</li>
+</ul>
 <hr />
+<p>The dataset has 3682 records of courses, each with 12 different
+variables. The most important ones are:</p>
+<ul>
+<li>Course title</li>
+<li>Whether the course is free or paid</li>
+<li>Price of course</li>
+<li>Number of subscribers</li>
+<li>Number of reviews</li>
+<li>Number of lectures</li>
+<li>Level/difficulty of course</li>
+<li>Course duration (in hours)</li>
+<li>Date the course was published</li>
+<li>Course subject</li>
+</ul>
+<p>This dataset was created May 16, 2020 by a data scientist in Brazil.
+The data can be found here: <a href="https://www.kaggle.com/datasets/andrewmvd/udemy-courses?select=udemy_courses.csv" class="uri">https://www.kaggle.com/datasets/andrewmvd/udemy-courses?select=udemy_courses.csv</a></p>
+<p>All of our team members are working / have worked in
+education-related careers, so we really wanted to work on an
+education-based dataset. Amanda is currently an online course developer
+for MathWorks on Coursera, so she’s particularly interested in MOOC
+platform data analysis. Dani does research and analysis at a higher
+education institution that is planning a large expansion of online
+offerings. Anand is a solutions architect at a not-for-profit and has
+worked on several projects to improve postsecondary education for
+students by enabling researchers to generate rigorous evidence and help
+those in the field connect research and practice.</p>
 </div>
 <div id="methods" class="section level2">
 <h2>Methods</h2>
@@ -428,27 +479,86 @@ needed.</p>
 <p>This section should contain any information about data preparation
 that is performed to the original data before modelling. Then you will
 apply methods seen in class, which may include some of the following but
-are not limited to:</p>
-<p>Multiple linear regression</p>
-<p>Dummy variables</p>
-<p>Interaction</p>
-<p>Residual diagnostics</p>
-<p>Outlier diagnostics</p>
-<p>Transformations</p>
-<p>Polynomial regression</p>
-<p>Model selection</p>
+are not limited to: - Multiple linear regression - Dummy variables -
+Interaction - Residual diagnostics - Outlier diagnostics -
+Transformations - Polynomial regression - Model selection</p>
 <p>Your task is not to use as many methods as possible. Your task is to
 use appropriate methods to find a good model that can correctly answer a
 question about the dataset, and then to communicate your result
-effectively. Some possible items to be discussed:</p>
-<p>Description of the original data file including description of all
-relevant variables.</p>
-<p>Description of additional data preparation that you performed.</p>
-<p>Description of the process you chose to follow.</p>
-<p>Narrative of your step-by-step decision making process throughout the
-analysis as you adjusted the model and attempted to validate model
-assumptions.</p>
+effectively. Some possible items to be discussed: - Description of the
+original data file including description of all relevant variables. -
+Description of additional data preparation that you performed. -
+Description of the process you chose to follow. - Narrative of your
+step-by-step decision making process throughout the analysis as you
+adjusted the model and attempted to validate model assumptions.</p>
 <hr />
+<pre class="r"><code>library(readr)</code></pre>
+<pre><code>## Warning: package &#39;readr&#39; was built under R version 4.0.5</code></pre>
+<pre class="r"><code>udemy = read_csv(&quot;udemy_courses.csv&quot;)</code></pre>
+<pre><code>## Rows: 3678 Columns: 12
+## ── Column specification ────────────────────────────────────────────────────────
+## Delimiter: &quot;,&quot;
+## chr  (4): course_title, url, level, subject
+## dbl  (6): course_id, price, num_subscribers, num_reviews, num_lectures, cont...
+## lgl  (1): is_paid
+## dttm (1): published_timestamp
+## 
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre class="r"><code>#View(udemy)
+library(dplyr)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;dplyr&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:stats&#39;:
+## 
+##     filter, lag</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     intersect, setdiff, setequal, union</code></pre>
+<pre class="r"><code>glimpse(udemy)</code></pre>
+<pre><code>## Rows: 3,678
+## Columns: 12
+## $ course_id           &lt;dbl&gt; 1070968, 1113822, 1006314, 1210588, 1011058, 19287…
+## $ course_title        &lt;chr&gt; &quot;Ultimate Investment Banking Course&quot;, &quot;Complete GS…
+## $ url                 &lt;chr&gt; &quot;https://www.udemy.com/ultimate-investment-banking…
+## $ is_paid             &lt;lgl&gt; TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TR…
+## $ price               &lt;dbl&gt; 200, 75, 45, 95, 200, 150, 65, 95, 195, 200, 200, …
+## $ num_subscribers     &lt;dbl&gt; 2147, 2792, 2174, 2451, 1276, 9221, 1540, 2917, 51…
+## $ num_reviews         &lt;dbl&gt; 23, 923, 74, 11, 45, 138, 178, 148, 34, 14, 93, 42…
+## $ num_lectures        &lt;dbl&gt; 51, 274, 51, 36, 26, 25, 26, 23, 38, 15, 76, 17, 1…
+## $ level               &lt;chr&gt; &quot;All Levels&quot;, &quot;All Levels&quot;, &quot;Intermediate Level&quot;, …
+## $ content_duration    &lt;dbl&gt; 1.5000, 39.0000, 2.5000, 3.0000, 2.0000, 3.0000, 1…
+## $ published_timestamp &lt;dttm&gt; 2017-01-18 20:58:58, 2017-03-09 16:34:20, 2016-12…
+## $ subject             &lt;chr&gt; &quot;Business Finance&quot;, &quot;Business Finance&quot;, &quot;Business …</code></pre>
+<pre class="r"><code>summary(udemy)</code></pre>
+<pre><code>##    course_id       course_title           url             is_paid       
+##  Min.   :   8324   Length:3678        Length:3678        Mode :logical  
+##  1st Qu.: 407692   Class :character   Class :character   FALSE:310      
+##  Median : 687917   Mode  :character   Mode  :character   TRUE :3368     
+##  Mean   : 675972                                                        
+##  3rd Qu.: 961356                                                        
+##  Max.   :1282064                                                        
+##      price     num_subscribers   num_reviews     num_lectures  
+##  Min.   :  0   Min.   :     0   Min.   :    0   Min.   :  0.0  
+##  1st Qu.: 20   1st Qu.:   111   1st Qu.:    4   1st Qu.: 15.0  
+##  Median : 45   Median :   912   Median :   18   Median : 25.0  
+##  Mean   : 66   Mean   :  3197   Mean   :  156   Mean   : 40.1  
+##  3rd Qu.: 95   3rd Qu.:  2546   3rd Qu.:   67   3rd Qu.: 45.8  
+##  Max.   :200   Max.   :268923   Max.   :27445   Max.   :779.0  
+##     level           content_duration published_timestamp          
+##  Length:3678        Min.   : 0.00    Min.   :2011-07-09 05:43:31  
+##  Class :character   1st Qu.: 1.00    1st Qu.:2015-03-16 19:01:45  
+##  Mode  :character   Median : 2.00    Median :2016-01-27 18:10:50  
+##                     Mean   : 4.09    Mean   :2015-11-26 14:17:16  
+##                     3rd Qu.: 4.50    3rd Qu.:2016-10-29 21:19:39  
+##                     Max.   :78.50    Max.   :2017-07-06 21:46:30  
+##    subject         
+##  Length:3678       
+##  Class :character  
+##  Mode  :character  
+##                    
+##                    
+## </code></pre>
 </div>
 <div id="results" class="section level2">
 <h2>Results</h2>
@@ -469,8 +579,8 @@ and provide evidence that your final choice of model is a good one.</p>
 <hr />
 <p>*** Delete before submitting</p>
 <p>The discussion section should contain discussion of your results and
-should frame your results in the context of the data.</p>
-<p>How is your final model useful?</p>
+should frame your results in the context of the data.<br />
+- How is your final model useful?</p>
 <hr />
 </div>
 <div id="appendix" class="section level2">
