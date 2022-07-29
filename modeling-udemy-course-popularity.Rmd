@@ -186,11 +186,13 @@ calc_loocv_rmse = function(model) {
   )) ^ 2))
 }
 
+#Change trace = 0 to trace = 1
+
 #Backward AIC Search
-udemy_mod_back_aic = step(udemy_mod, direction = "backward", trace = 0)
+udemy_mod_back_aic = step(udemy_mod, direction = "backward", trace = 1)
 
 #Backward BIC Search
-udemy_mod_back_bic = step(udemy_mod, direction = "backward", k = log(n), trace = 0)
+udemy_mod_back_bic = step(udemy_mod, direction = "backward", k = log(n), trace = 1)
 
 #Forward AIC Search
 udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
@@ -198,7 +200,7 @@ udemy_mod_forward_aic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
     content_duration + published_timestamp + subject,
-  direction = "forward", trace = 0
+  direction = "forward", trace = 1
 )
 
 #Forward BIC Search
@@ -206,7 +208,7 @@ udemy_mod_forward_bic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
     content_duration + published_timestamp + subject,
-  direction = "forward", k = log(n), trace = 0
+  direction = "forward", k = log(n), trace = 1
 )
 
 #Stepwise AIC Search
@@ -214,14 +216,14 @@ udemy_mod_both_aic = step(
   udemy_mod_start, 
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
     content_duration + published_timestamp + subject,
-  direction = "both", trace = 0)
+  direction = "both", trace = 1)
 
 #Stepwise BIC Search
 udemy_mod_both_bic = step(
   udemy_mod_start, 
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
     content_duration + published_timestamp + subject,
-  direction = "both", k = log(n), trace = 0)
+  direction = "both", k = log(n), trace = 1)
 
 summary(udemy_mod)$adj.r.squared
 summary(udemy_mod_back_aic)$adj.r.squared
@@ -242,6 +244,81 @@ calc_loocv_rmse(udemy_mod_both_bic)
 ```
 
 
+```{r}
+library(leaps)
+library(lmtest)
+
+get_bp_decision = function(model, alpha) {
+  decide = unname(bptest(model)$p.value < alpha)
+  ifelse(decide, "Reject", "Fail to Reject")
+}
+
+get_sw_decision = function(model, alpha) {
+  decide = unname(shapiro.test(resid(model))$p.value < alpha)
+  ifelse(decide, "Reject", "Fail to Reject")
+}
+
+get_num_params = function(model) {
+  length(coef(model))
+}
+
+get_loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (
+    1 - hatvalues(model)
+  )) ^ 2))
+}
+
+get_adj_r2 = function(model) {
+  summary(model)$adj.r.squared
+}
+
+n = nrow(udemy)
+
+udemy_model_dredge = lm(
+  num_subscribers ~ is_paid + price + num_reviews +
+    level + published_timestamp + subject,
+  data = udemy,
+  na.action = na.fail
+)
+
+library(MuMIn)
+combinations = dredge(
+  udemy_model_dredge,
+  extra = list(
+    bptest = function(x)
+      if (length(x$coefficients) > 1) {
+        bptest(x)$p.value
+      },
+    
+    loocv_rmse = function(x)
+      get_loocv_rmse(x),
+    
+    adj_r2 = function(x)
+      get_adj_r2(x)
+    
+  )
+)
+
+
+#Select first result matching criteria (after sorting by bptest and filtering on
+#loocv_rmse, adj_r2, and df in combinations dataframe)
+
+#This is not necessarily the best model - just using a placeholder - need to try various transformations
+mod_a = lm(
+  num_subscribers ~ is_paid + price + num_reviews +
+    level + published_timestamp + subject,
+  data = udemy
+)
+
+get_loocv_rmse(mod_a)
+get_adj_r2(mod_a)
+get_bp_decision(mod_a, alpha = 0.01)
+get_num_params(mod_a)
+
+```
+
+
+
 
 
 ```{r}
@@ -259,6 +336,31 @@ cor(udemy[,-c(1,7,9,10)]) %>%
 
 
 *** To be done: Higher order terms
+
+
+```{r}
+library(lmtest)
+bptest(udemy_mod_back_aic)
+shapiro.test(resid(udemy_mod_back_aic))
+
+
+plot(fitted(udemy_mod_back_aic), resid(udemy_mod_back_aic), col = "dodgerblue",
+     pch = 20, cex = 1.5, xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2, col = "darkorange", lwd = 2)
+
+
+
+
+```
+
+For the Breusch-Pagan test, if we see a small p-value, we reject the null of homoscedasticity. The constant variance assumption is violated.
+
+For the Shaprio-Wilk test, the null hypothesis assumes the data were sampled from a normal distribution, thus a small p-value indicates we believe there is only a small probability the data could have been sampled from a normal distribution.
+
+
+
+
+
 
 
 ## Results
