@@ -187,10 +187,10 @@ calc_loocv_rmse = function(model) {
 }
 
 #Backward AIC Search
-udemy_mod_back_aic = step(udemy_mod, direction = "backward")
+udemy_mod_back_aic = step(udemy_mod, direction = "backward", trace = 0)
 
 #Backward BIC Search
-udemy_mod_back_bic = step(udemy_mod, direction = "backward", k = log(n))
+udemy_mod_back_bic = step(udemy_mod, direction = "backward", k = log(n), trace = 0)
 
 #Forward AIC Search
 udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
@@ -198,7 +198,7 @@ udemy_mod_forward_aic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
     content_duration + published_timestamp + subject,
-  direction = "forward"
+  direction = "forward", trace = 0
 )
 
 #Forward BIC Search
@@ -206,23 +206,59 @@ udemy_mod_forward_bic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
     content_duration + published_timestamp + subject,
-  direction = "forward", k = log(n)
+  direction = "forward", k = log(n), trace = 0
 )
+
+#Stepwise AIC Search
+udemy_mod_both_aic = step(
+  udemy_mod_start, 
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+    content_duration + published_timestamp + subject,
+  direction = "both", trace = 0)
+
+#Stepwise BIC Search
+udemy_mod_both_bic = step(
+  udemy_mod_start, 
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+    content_duration + published_timestamp + subject,
+  direction = "both", k = log(n), trace = 0)
 
 summary(udemy_mod)$adj.r.squared
 summary(udemy_mod_back_aic)$adj.r.squared
 summary(udemy_mod_back_bic)$adj.r.squared
 summary(udemy_mod_forward_aic)$adj.r.squared
 summary(udemy_mod_forward_bic)$adj.r.squared
+summary(udemy_mod_both_aic)$adj.r.squared
+summary(udemy_mod_both_bic)$adj.r.squared
 
 calc_loocv_rmse(udemy_mod)
 calc_loocv_rmse(udemy_mod_back_aic)
 calc_loocv_rmse(udemy_mod_back_bic)
 calc_loocv_rmse(udemy_mod_forward_aic)
 calc_loocv_rmse(udemy_mod_forward_bic)
+calc_loocv_rmse(udemy_mod_both_aic)
+calc_loocv_rmse(udemy_mod_both_bic)
 
 ```
 
+
+
+
+```{r}
+#Temporarily removing course_title - discuss parsing options
+library(faraway)
+pairs(udemy[,-c(1)], col = "dodgerblue")
+
+#Retrieved from https://www.reddit.com/r/Rlanguage/comments/q6let2/problems_with_pairs_corrplot_too_big_illegible/
+#Troubleshoot: 'x' must be numeric
+#Temporarily Removed course_title, level, published_timestamp, subject
+cor(udemy[,-c(1,7,9,10)]) %>%
+  tibble::as_tibble(rownames = "var1") %>%
+  tidyr::pivot_longer(!var1, names_to = "var2", values_to = "corr")
+```
+
+
+*** To be done: Higher order terms
 
 
 ## Results
