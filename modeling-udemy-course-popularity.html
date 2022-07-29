@@ -508,9 +508,9 @@ adjusted the model and attempted to validate model assumptions.</p>
 <p>Response: num_subscribers Predictors: - course_id: Not relevant -
 course_title: May be relevant - url: Not relevant - is_paid: May be
 relevant - price: May be relevant - num_reviews: May be relevant -
-num_lectures: May be relevant - level: May be relevant -
+num_lectures: May be relevant - level: May be relevant - As Factor -
 content_duration: May be relevant - published_timestamp: May be relevant
-- subject: May be relevant</p>
+- subject: May be relevant - As Factor</p>
 <pre class="r"><code>udemy = subset(udemy,select=-c(course_id,url))
 udemy$level = as.factor(udemy$level)
 udemy$subject = as.factor(udemy$subject)</code></pre>
@@ -1200,7 +1200,12 @@ cor(udemy[,-c(1,7,9,10)]) %&gt;%
 ##  9 price   num_subscribers   0.0508
 ## 10 price   num_reviews       0.114 
 ## # … with 26 more rows</code></pre>
-<p>*** To be done: Higher order terms</p>
+<p>*** TBD: Higher order terms *** TBD: There appear to be outliers -
+investigate further and remove.<br />
+Confirmed via Kaggle notes: <a href="https://www.kaggle.com/code/andrewmvd/udemy-courses-getting-started/notebook" class="uri">https://www.kaggle.com/code/andrewmvd/udemy-courses-getting-started/notebook</a>
+- “Our plot is being dragged too much due to some outliers. These
+outliers have either a great amount of reviews (&gt;2000) or great
+number of subscribers (&gt;10000).”</p>
 <pre class="r"><code>library(lmtest)
 bptest(udemy_mod_back_aic)</code></pre>
 <pre><code>## 
