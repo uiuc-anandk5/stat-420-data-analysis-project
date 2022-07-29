@@ -127,6 +127,32 @@ udemy = read_csv("udemy_courses.csv")
 
 ```
 
+
+
+
+Response: num_subscribers
+Predictors:
+- course_id: Not relevant
+- course_title: May be relevant
+- url: Not relevant
+- is_paid: May be relevant
+- price: May be relevant
+- num_reviews: May be relevant
+- num_lectures: May be relevant
+- level: May be relevant
+- content_duration: May be relevant
+- published_timestamp: May be relevant
+- subject: May be relevant
+
+
+```{r}
+udemy = subset(udemy,select=-c(course_id,url))
+udemy$level = as.factor(udemy$level)
+udemy$subject = as.factor(udemy$subject)
+```
+
+
+
 ```{r}
 #View(udemy)
 library(dplyr)
@@ -136,12 +162,65 @@ summary(udemy)
 
 
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
+```{r warning=FALSE}
 #Anand note - Delete chunk prior to submitting.  For insights only.  We should replicate specific analysis manually.
 #install.packages("DataExplorer")
-library(DataExplorer)
-DataExplorer::create_report(udemy)
+#library(DataExplorer)
+#DataExplorer::create_report(udemy)
 #See report.html
+```
+
+
+```{r}
+#Temporarily removing course_title - discuss parsing options
+udemy_mod = lm(num_subscribers ~ .-course_title, data = udemy)
+summary(udemy_mod)
+(n = length(resid(udemy_mod)))
+```
+
+
+```{r}
+calc_loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (
+    1 - hatvalues(model)
+  )) ^ 2))
+}
+
+#Backward AIC Search
+udemy_mod_back_aic = step(udemy_mod, direction = "backward")
+
+#Backward BIC Search
+udemy_mod_back_bic = step(udemy_mod, direction = "backward", k = log(n))
+
+#Forward AIC Search
+udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
+udemy_mod_forward_aic = step(
+  udemy_mod_start,
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+    content_duration + published_timestamp + subject,
+  direction = "forward"
+)
+
+#Forward BIC Search
+udemy_mod_forward_bic = step(
+  udemy_mod_start,
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+    content_duration + published_timestamp + subject,
+  direction = "forward", k = log(n)
+)
+
+summary(udemy_mod)$adj.r.squared
+summary(udemy_mod_back_aic)$adj.r.squared
+summary(udemy_mod_back_bic)$adj.r.squared
+summary(udemy_mod_forward_aic)$adj.r.squared
+summary(udemy_mod_forward_bic)$adj.r.squared
+
+calc_loocv_rmse(udemy_mod)
+calc_loocv_rmse(udemy_mod_back_aic)
+calc_loocv_rmse(udemy_mod_back_bic)
+calc_loocv_rmse(udemy_mod_forward_aic)
+calc_loocv_rmse(udemy_mod_forward_bic)
+
 ```
 
 

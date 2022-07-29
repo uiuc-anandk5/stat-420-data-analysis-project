@@ -505,6 +505,15 @@ adjusted the model and attempted to validate model assumptions.</p>
 ## 
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<p>Response: num_subscribers Predictors: - course_id: Not relevant -
+course_title: May be relevant - url: Not relevant - is_paid: May be
+relevant - price: May be relevant - num_reviews: May be relevant -
+num_lectures: May be relevant - level: May be relevant -
+content_duration: May be relevant - published_timestamp: May be relevant
+- subject: May be relevant</p>
+<pre class="r"><code>udemy = subset(udemy,select=-c(course_id,url))
+udemy$level = as.factor(udemy$level)
+udemy$subject = as.factor(udemy$subject)</code></pre>
 <pre class="r"><code>#View(udemy)
 library(dplyr)</code></pre>
 <pre><code>## 
@@ -517,48 +526,368 @@ library(dplyr)</code></pre>
 ##     intersect, setdiff, setequal, union</code></pre>
 <pre class="r"><code>glimpse(udemy)</code></pre>
 <pre><code>## Rows: 3,678
-## Columns: 12
-## $ course_id           &lt;dbl&gt; 1070968, 1113822, 1006314, 1210588, 1011058, 19287…
+## Columns: 10
 ## $ course_title        &lt;chr&gt; &quot;Ultimate Investment Banking Course&quot;, &quot;Complete GS…
-## $ url                 &lt;chr&gt; &quot;https://www.udemy.com/ultimate-investment-banking…
 ## $ is_paid             &lt;lgl&gt; TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TR…
 ## $ price               &lt;dbl&gt; 200, 75, 45, 95, 200, 150, 65, 95, 195, 200, 200, …
 ## $ num_subscribers     &lt;dbl&gt; 2147, 2792, 2174, 2451, 1276, 9221, 1540, 2917, 51…
 ## $ num_reviews         &lt;dbl&gt; 23, 923, 74, 11, 45, 138, 178, 148, 34, 14, 93, 42…
 ## $ num_lectures        &lt;dbl&gt; 51, 274, 51, 36, 26, 25, 26, 23, 38, 15, 76, 17, 1…
-## $ level               &lt;chr&gt; &quot;All Levels&quot;, &quot;All Levels&quot;, &quot;Intermediate Level&quot;, …
+## $ level               &lt;fct&gt; All Levels, All Levels, Intermediate Level, All Le…
 ## $ content_duration    &lt;dbl&gt; 1.5000, 39.0000, 2.5000, 3.0000, 2.0000, 3.0000, 1…
 ## $ published_timestamp &lt;dttm&gt; 2017-01-18 20:58:58, 2017-03-09 16:34:20, 2016-12…
-## $ subject             &lt;chr&gt; &quot;Business Finance&quot;, &quot;Business Finance&quot;, &quot;Business …</code></pre>
+## $ subject             &lt;fct&gt; Business Finance, Business Finance, Business Finan…</code></pre>
 <pre class="r"><code>summary(udemy)</code></pre>
-<pre><code>##    course_id       course_title           url             is_paid       
-##  Min.   :   8324   Length:3678        Length:3678        Mode :logical  
-##  1st Qu.: 407692   Class :character   Class :character   FALSE:310      
-##  Median : 687917   Mode  :character   Mode  :character   TRUE :3368     
-##  Mean   : 675972                                                        
-##  3rd Qu.: 961356                                                        
-##  Max.   :1282064                                                        
-##      price     num_subscribers   num_reviews     num_lectures  
-##  Min.   :  0   Min.   :     0   Min.   :    0   Min.   :  0.0  
-##  1st Qu.: 20   1st Qu.:   111   1st Qu.:    4   1st Qu.: 15.0  
-##  Median : 45   Median :   912   Median :   18   Median : 25.0  
-##  Mean   : 66   Mean   :  3197   Mean   :  156   Mean   : 40.1  
-##  3rd Qu.: 95   3rd Qu.:  2546   3rd Qu.:   67   3rd Qu.: 45.8  
-##  Max.   :200   Max.   :268923   Max.   :27445   Max.   :779.0  
-##     level           content_duration published_timestamp          
-##  Length:3678        Min.   : 0.00    Min.   :2011-07-09 05:43:31  
-##  Class :character   1st Qu.: 1.00    1st Qu.:2015-03-16 19:01:45  
-##  Mode  :character   Median : 2.00    Median :2016-01-27 18:10:50  
-##                     Mean   : 4.09    Mean   :2015-11-26 14:17:16  
-##                     3rd Qu.: 4.50    3rd Qu.:2016-10-29 21:19:39  
-##                     Max.   :78.50    Max.   :2017-07-06 21:46:30  
-##    subject         
-##  Length:3678       
-##  Class :character  
-##  Mode  :character  
-##                    
-##                    
-## </code></pre>
+<pre><code>##  course_title        is_paid            price     num_subscribers 
+##  Length:3678        Mode :logical   Min.   :  0   Min.   :     0  
+##  Class :character   FALSE:310       1st Qu.: 20   1st Qu.:   111  
+##  Mode  :character   TRUE :3368      Median : 45   Median :   912  
+##                                     Mean   : 66   Mean   :  3197  
+##                                     3rd Qu.: 95   3rd Qu.:  2546  
+##                                     Max.   :200   Max.   :268923  
+##   num_reviews     num_lectures                  level      content_duration
+##  Min.   :    0   Min.   :  0.0   All Levels        :1929   Min.   : 0.00   
+##  1st Qu.:    4   1st Qu.: 15.0   Beginner Level    :1270   1st Qu.: 1.00   
+##  Median :   18   Median : 25.0   Expert Level      :  58   Median : 2.00   
+##  Mean   :  156   Mean   : 40.1   Intermediate Level: 421   Mean   : 4.09   
+##  3rd Qu.:   67   3rd Qu.: 45.8                             3rd Qu.: 4.50   
+##  Max.   :27445   Max.   :779.0                             Max.   :78.50   
+##  published_timestamp                          subject    
+##  Min.   :2011-07-09 05:43:31   Business Finance   :1195  
+##  1st Qu.:2015-03-16 19:01:45   Graphic Design     : 603  
+##  Median :2016-01-27 18:10:50   Musical Instruments: 680  
+##  Mean   :2015-11-26 14:17:16   Web Development    :1200  
+##  3rd Qu.:2016-10-29 21:19:39                             
+##  Max.   :2017-07-06 21:46:30</code></pre>
+<pre class="r"><code>#Anand note - Delete chunk prior to submitting.  For insights only.  We should replicate specific analysis manually.
+#install.packages(&quot;DataExplorer&quot;)
+#library(DataExplorer)
+#DataExplorer::create_report(udemy)
+#See report.html</code></pre>
+<pre class="r"><code>#Temporarily removing course_title - discuss parsing options
+udemy_mod = lm(num_subscribers ~ .-course_title, data = udemy)
+summary(udemy_mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = num_subscribers ~ . - course_title, data = udemy)
+## 
+## Residuals:
+##    Min     1Q Median     3Q    Max 
+## -48425  -2203   -408   1150 202123 
+## 
+## Coefficients:
+##                             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)                 7.62e+04   4.53e+03   16.82  &lt; 2e-16 ***
+## is_paidTRUE                -7.76e+03   4.23e+02  -18.32  &lt; 2e-16 ***
+## price                       1.13e+01   2.06e+00    5.48  4.5e-08 ***
+## num_reviews                 6.02e+00   1.22e-01   49.33  &lt; 2e-16 ***
+## num_lectures               -3.27e+00   3.72e+00   -0.88    0.380    
+## levelBeginner Level         2.75e+02   2.44e+02    1.12    0.261    
+## levelExpert Level          -9.47e+02   8.81e+02   -1.07    0.283    
+## levelIntermediate Level    -6.29e+02   3.58e+02   -1.76    0.079 .  
+## content_duration            7.34e+00   3.05e+01    0.24    0.810    
+## published_timestamp        -4.74e-05   3.12e-06  -15.19  &lt; 2e-16 ***
+## subjectGraphic Design       7.69e+02   3.32e+02    2.31    0.021 *  
+## subjectMusical Instruments  5.96e+01   3.25e+02    0.18    0.854    
+## subjectWeb Development      3.27e+03   2.76e+02   11.84  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 6590 on 3665 degrees of freedom
+## Multiple R-squared:  0.521,  Adjusted R-squared:  0.519 
+## F-statistic:  332 on 12 and 3665 DF,  p-value: &lt;2e-16</code></pre>
+<pre class="r"><code>(n = length(resid(udemy_mod)))</code></pre>
+<pre><code>## [1] 3678</code></pre>
+<pre class="r"><code>calc_loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (
+    1 - hatvalues(model)
+  )) ^ 2))
+}
+
+#Backward AIC Search
+udemy_mod_back_aic = step(udemy_mod, direction = &quot;backward&quot;)</code></pre>
+<pre><code>## Start:  AIC=64696
+## num_subscribers ~ (course_title + is_paid + price + num_reviews + 
+##     num_lectures + level + content_duration + published_timestamp + 
+##     subject) - course_title
+## 
+##                       Df Sum of Sq      RSS   AIC
+## - content_duration     1  2.51e+06 1.59e+11 64694
+## - num_lectures         1  3.35e+07 1.59e+11 64694
+## &lt;none&gt;                             1.59e+11 64696
+## - level                3  3.10e+08 1.59e+11 64697
+## - price                1  1.30e+09 1.60e+11 64724
+## - subject              3  7.37e+09 1.66e+11 64856
+## - published_timestamp  1  1.00e+10 1.69e+11 64918
+## - is_paid              1  1.46e+10 1.74e+11 65016
+## - num_reviews          1  1.06e+11 2.65e+11 66566
+## 
+## Step:  AIC=64694
+## num_subscribers ~ is_paid + price + num_reviews + num_lectures + 
+##     level + published_timestamp + subject
+## 
+##                       Df Sum of Sq      RSS   AIC
+## - num_lectures         1  5.11e+07 1.59e+11 64693
+## &lt;none&gt;                             1.59e+11 64694
+## - level                3  3.09e+08 1.59e+11 64695
+## - price                1  1.31e+09 1.60e+11 64722
+## - subject              3  7.41e+09 1.67e+11 64855
+## - published_timestamp  1  1.01e+10 1.69e+11 64918
+## - is_paid              1  1.46e+10 1.74e+11 65014
+## - num_reviews          1  1.06e+11 2.65e+11 66568
+## 
+## Step:  AIC=64693
+## num_subscribers ~ is_paid + price + num_reviews + level + published_timestamp + 
+##     subject
+## 
+##                       Df Sum of Sq      RSS   AIC
+## &lt;none&gt;                             1.59e+11 64693
+## - level                3  3.09e+08 1.59e+11 64694
+## - price                1  1.27e+09 1.60e+11 64720
+## - subject              3  7.37e+09 1.67e+11 64853
+## - published_timestamp  1  1.01e+10 1.69e+11 64916
+## - is_paid              1  1.47e+10 1.74e+11 65015
+## - num_reviews          1  1.09e+11 2.68e+11 66614</code></pre>
+<pre class="r"><code>#Backward BIC Search
+udemy_mod_back_bic = step(udemy_mod, direction = &quot;backward&quot;, k = log(n))</code></pre>
+<pre><code>## Start:  AIC=64776
+## num_subscribers ~ (course_title + is_paid + price + num_reviews + 
+##     num_lectures + level + content_duration + published_timestamp + 
+##     subject) - course_title
+## 
+##                       Df Sum of Sq      RSS   AIC
+## - level                3  3.10e+08 1.59e+11 64759
+## - content_duration     1  2.51e+06 1.59e+11 64768
+## - num_lectures         1  3.35e+07 1.59e+11 64769
+## &lt;none&gt;                             1.59e+11 64776
+## - price                1  1.30e+09 1.60e+11 64798
+## - subject              3  7.37e+09 1.66e+11 64918
+## - published_timestamp  1  1.00e+10 1.69e+11 64993
+## - is_paid              1  1.46e+10 1.74e+11 65091
+## - num_reviews          1  1.06e+11 2.65e+11 66641
+## 
+## Step:  AIC=64759
+## num_subscribers ~ is_paid + price + num_reviews + num_lectures + 
+##     content_duration + published_timestamp + subject
+## 
+##                       Df Sum of Sq      RSS   AIC
+## - content_duration     1  1.29e+06 1.59e+11 64751
+## - num_lectures         1  2.95e+07 1.59e+11 64751
+## &lt;none&gt;                             1.59e+11 64759
+## - price                1  1.28e+09 1.61e+11 64780
+## - subject              3  7.41e+09 1.67e+11 64901
+## - published_timestamp  1  1.02e+10 1.70e+11 64978
+## - is_paid              1  1.49e+10 1.74e+11 65080
+## - num_reviews          1  1.06e+11 2.65e+11 66622
+## 
+## Step:  AIC=64751
+## num_subscribers ~ is_paid + price + num_reviews + num_lectures + 
+##     published_timestamp + subject
+## 
+##                       Df Sum of Sq      RSS   AIC
+## - num_lectures         1  5.11e+07 1.59e+11 64744
+## &lt;none&gt;                             1.59e+11 64751
+## - price                1  1.29e+09 1.61e+11 64772
+## - subject              3  7.44e+09 1.67e+11 64894
+## - published_timestamp  1  1.02e+10 1.70e+11 64972
+## - is_paid              1  1.49e+10 1.74e+11 65072
+## - num_reviews          1  1.06e+11 2.65e+11 66617
+## 
+## Step:  AIC=64744
+## num_subscribers ~ is_paid + price + num_reviews + published_timestamp + 
+##     subject
+## 
+##                       Df Sum of Sq      RSS   AIC
+## &lt;none&gt;                             1.59e+11 64744
+## - price                1  1.25e+09 1.61e+11 64764
+## - subject              3  7.40e+09 1.67e+11 64886
+## - published_timestamp  1  1.02e+10 1.70e+11 64963
+## - is_paid              1  1.50e+10 1.75e+11 65066
+## - num_reviews          1  1.10e+11 2.69e+11 66658</code></pre>
+<pre class="r"><code>#Forward AIC Search
+udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
+udemy_mod_forward_aic = step(
+  udemy_mod_start,
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+    content_duration + published_timestamp + subject,
+  direction = &quot;forward&quot;
+)</code></pre>
+<pre><code>## Start:  AIC=67378
+## num_subscribers ~ 1
+## 
+##                       Df Sum of Sq      RSS   AIC
+## + num_reviews          1  1.40e+11 1.92e+11 65361
+## + is_paid              1  2.35e+10 3.09e+11 67110
+## + subject              3  2.13e+10 3.11e+11 67140
+## + published_timestamp  1  1.18e+10 3.20e+11 67247
+## + content_duration     1  8.70e+09 3.23e+11 67283
+## + num_lectures         1  8.26e+09 3.24e+11 67287
+## + level                3  1.47e+09 3.31e+11 67368
+## + price                1  8.56e+08 3.31e+11 67371
+## &lt;none&gt;                             3.32e+11 67378
+## 
+## Step:  AIC=65361
+## num_subscribers ~ num_reviews
+## 
+##                       Df Sum of Sq      RSS   AIC
+## + is_paid              1  1.47e+10 1.77e+11 65071
+## + subject              3  8.24e+09 1.84e+11 65206
+## + published_timestamp  1  7.85e+09 1.84e+11 65210
+## + level                3  7.37e+08 1.91e+11 65353
+## + price                1  1.80e+08 1.92e+11 65360
+## &lt;none&gt;                             1.92e+11 65361
+## + content_duration     1  5.99e+07 1.92e+11 65362
+## + num_lectures         1  1.56e+04 1.92e+11 65363
+## 
+## Step:  AIC=65071
+## num_subscribers ~ num_reviews + is_paid
+## 
+##                       Df Sum of Sq      RSS   AIC
+## + published_timestamp  1  8.17e+09 1.69e+11 64899
+## + subject              3  7.14e+09 1.70e+11 64925
+## + price                1  8.88e+08 1.76e+11 65054
+## + content_duration     1  4.92e+08 1.77e+11 65063
+## + level                3  5.01e+08 1.77e+11 65066
+## + num_lectures         1  2.83e+08 1.77e+11 65067
+## &lt;none&gt;                             1.77e+11 65071
+## 
+## Step:  AIC=64899
+## num_subscribers ~ num_reviews + is_paid + published_timestamp
+## 
+##                    Df Sum of Sq      RSS   AIC
+## + subject           3  8.27e+09 1.61e+11 64721
+## + price             1  2.11e+09 1.67e+11 64855
+## + content_duration  1  3.34e+08 1.69e+11 64894
+## + num_lectures      1  2.72e+08 1.69e+11 64895
+## + level             3  3.18e+08 1.69e+11 64898
+## &lt;none&gt;                          1.69e+11 64899
+## 
+## Step:  AIC=64721
+## num_subscribers ~ num_reviews + is_paid + published_timestamp + 
+##     subject
+## 
+##                    Df Sum of Sq      RSS   AIC
+## + price             1  1.25e+09 1.59e+11 64694
+## + level             3  2.84e+08 1.60e+11 64720
+## &lt;none&gt;                          1.61e+11 64721
+## + content_duration  1  1.69e+07 1.61e+11 64722
+## + num_lectures      1  9.97e+06 1.61e+11 64722
+## 
+## Step:  AIC=64694
+## num_subscribers ~ num_reviews + is_paid + published_timestamp + 
+##     subject + price
+## 
+##                    Df Sum of Sq      RSS   AIC
+## + level             3 308829100 1.59e+11 64693
+## &lt;none&gt;                          1.59e+11 64694
+## + num_lectures      1  51079804 1.59e+11 64695
+## + content_duration  1  22861726 1.59e+11 64695
+## 
+## Step:  AIC=64693
+## num_subscribers ~ num_reviews + is_paid + published_timestamp + 
+##     subject + price + level
+## 
+##                    Df Sum of Sq      RSS   AIC
+## &lt;none&gt;                          1.59e+11 64693
+## + num_lectures      1  51108215 1.59e+11 64694
+## + content_duration  1  20083348 1.59e+11 64694</code></pre>
+<pre class="r"><code>#Forward BIC Search
+udemy_mod_forward_bic = step(
+  udemy_mod_start,
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+    content_duration + published_timestamp + subject,
+  direction = &quot;forward&quot;, k = log(n)
+)</code></pre>
+<pre><code>## Start:  AIC=67384
+## num_subscribers ~ 1
+## 
+##                       Df Sum of Sq      RSS   AIC
+## + num_reviews          1  1.40e+11 1.92e+11 65374
+## + is_paid              1  2.35e+10 3.09e+11 67122
+## + subject              3  2.13e+10 3.11e+11 67165
+## + published_timestamp  1  1.18e+10 3.20e+11 67259
+## + content_duration     1  8.70e+09 3.23e+11 67295
+## + num_lectures         1  8.26e+09 3.24e+11 67300
+## + price                1  8.56e+08 3.31e+11 67383
+## &lt;none&gt;                             3.32e+11 67384
+## + level                3  1.47e+09 3.31e+11 67393
+## 
+## Step:  AIC=65374
+## num_subscribers ~ num_reviews
+## 
+##                       Df Sum of Sq      RSS   AIC
+## + is_paid              1  1.47e+10 1.77e+11 65089
+## + published_timestamp  1  7.85e+09 1.84e+11 65228
+## + subject              3  8.24e+09 1.84e+11 65237
+## &lt;none&gt;                             1.92e+11 65374
+## + price                1  1.80e+08 1.92e+11 65378
+## + content_duration     1  5.99e+07 1.92e+11 65381
+## + num_lectures         1  1.56e+04 1.92e+11 65382
+## + level                3  7.37e+08 1.91e+11 65384
+## 
+## Step:  AIC=65089
+## num_subscribers ~ num_reviews + is_paid
+## 
+##                       Df Sum of Sq      RSS   AIC
+## + published_timestamp  1  8.17e+09 1.69e+11 64924
+## + subject              3  7.14e+09 1.70e+11 64963
+## + price                1  8.88e+08 1.76e+11 65079
+## + content_duration     1  4.92e+08 1.77e+11 65087
+## &lt;none&gt;                             1.77e+11 65089
+## + num_lectures         1  2.83e+08 1.77e+11 65092
+## + level                3  5.01e+08 1.77e+11 65104
+## 
+## Step:  AIC=64924
+## num_subscribers ~ num_reviews + is_paid + published_timestamp
+## 
+##                    Df Sum of Sq      RSS   AIC
+## + subject           3  8.27e+09 1.61e+11 64764
+## + price             1  2.11e+09 1.67e+11 64886
+## &lt;none&gt;                          1.69e+11 64924
+## + content_duration  1  3.34e+08 1.69e+11 64925
+## + num_lectures      1  2.72e+08 1.69e+11 64926
+## + level             3  3.18e+08 1.69e+11 64942
+## 
+## Step:  AIC=64764
+## num_subscribers ~ num_reviews + is_paid + published_timestamp + 
+##     subject
+## 
+##                    Df Sum of Sq      RSS   AIC
+## + price             1  1.25e+09 1.59e+11 64744
+## &lt;none&gt;                          1.61e+11 64764
+## + content_duration  1  1.69e+07 1.61e+11 64772
+## + num_lectures      1  9.97e+06 1.61e+11 64772
+## + level             3  2.84e+08 1.60e+11 64782
+## 
+## Step:  AIC=64744
+## num_subscribers ~ num_reviews + is_paid + published_timestamp + 
+##     subject + price
+## 
+##                    Df Sum of Sq      RSS   AIC
+## &lt;none&gt;                          1.59e+11 64744
+## + num_lectures      1  51079804 1.59e+11 64751
+## + content_duration  1  22861726 1.59e+11 64751
+## + level             3 308829100 1.59e+11 64761</code></pre>
+<pre class="r"><code>summary(udemy_mod)$adj.r.squared</code></pre>
+<pre><code>## [1] 0.5193</code></pre>
+<pre class="r"><code>summary(udemy_mod_back_aic)$adj.r.squared</code></pre>
+<pre><code>## [1] 0.5194</code></pre>
+<pre class="r"><code>summary(udemy_mod_back_bic)$adj.r.squared</code></pre>
+<pre><code>## [1] 0.5189</code></pre>
+<pre class="r"><code>summary(udemy_mod_forward_aic)$adj.r.squared</code></pre>
+<pre><code>## [1] 0.5194</code></pre>
+<pre class="r"><code>summary(udemy_mod_forward_bic)$adj.r.squared</code></pre>
+<pre><code>## [1] 0.5189</code></pre>
+<pre class="r"><code>calc_loocv_rmse(udemy_mod)</code></pre>
+<pre><code>## [1] 6717</code></pre>
+<pre class="r"><code>calc_loocv_rmse(udemy_mod_back_aic)</code></pre>
+<pre><code>## [1] 6712</code></pre>
+<pre class="r"><code>calc_loocv_rmse(udemy_mod_back_bic)</code></pre>
+<pre><code>## [1] 6716</code></pre>
+<pre class="r"><code>calc_loocv_rmse(udemy_mod_forward_aic)</code></pre>
+<pre><code>## [1] 6712</code></pre>
+<pre class="r"><code>calc_loocv_rmse(udemy_mod_forward_bic)</code></pre>
+<pre><code>## [1] 6716</code></pre>
 </div>
 <div id="results" class="section level2">
 <h2>Results</h2>
