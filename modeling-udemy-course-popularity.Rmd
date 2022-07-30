@@ -172,7 +172,7 @@ summary(udemy)
 
 
 ```{r}
-#Temporarily removing course_title - discuss parsing options
+#Anand note - Temporarily removing course_title - discuss parsing options
 udemy_mod = lm(num_subscribers ~ .-course_title, data = udemy)
 summary(udemy_mod)
 (n = length(resid(udemy_mod)))
@@ -186,65 +186,110 @@ calc_loocv_rmse = function(model) {
   )) ^ 2))
 }
 
-#Change trace = 0 to trace = 1
+#Change traceValue to 1 for output
+traceValue = 0
 
 #Backward AIC Search
 udemy_mod_back_aic = step(udemy_mod, direction = "backward", trace = 1)
 
 #Backward BIC Search
-udemy_mod_back_bic = step(udemy_mod, direction = "backward", k = log(n), trace = 1)
+udemy_mod_back_bic = step(udemy_mod,
+                          direction = "backward",
+                          k = log(n),
+                          trace = 1)
 
 #Forward AIC Search
 udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
 udemy_mod_forward_aic = step(
   udemy_mod_start,
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
     content_duration + published_timestamp + subject,
-  direction = "forward", trace = 1
+  direction = "forward",
+  trace = traceValue
 )
 
 #Forward BIC Search
 udemy_mod_forward_bic = step(
   udemy_mod_start,
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
     content_duration + published_timestamp + subject,
-  direction = "forward", k = log(n), trace = 1
+  direction = "forward",
+  k = log(n),
+  trace = traceValue
 )
 
 #Stepwise AIC Search
 udemy_mod_both_aic = step(
-  udemy_mod_start, 
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+  udemy_mod_start,
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
     content_duration + published_timestamp + subject,
-  direction = "both", trace = 1)
+  direction = "both",
+  trace = traceValue
+)
 
 #Stepwise BIC Search
 udemy_mod_both_bic = step(
-  udemy_mod_start, 
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + 
+  udemy_mod_start,
+  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
     content_duration + published_timestamp + subject,
-  direction = "both", k = log(n), trace = 1)
+  direction = "both",
+  k = log(n),
+  trace = traceValue
+)
 
-summary(udemy_mod)$adj.r.squared
-summary(udemy_mod_back_aic)$adj.r.squared
-summary(udemy_mod_back_bic)$adj.r.squared
-summary(udemy_mod_forward_aic)$adj.r.squared
-summary(udemy_mod_forward_bic)$adj.r.squared
-summary(udemy_mod_both_aic)$adj.r.squared
-summary(udemy_mod_both_bic)$adj.r.squared
+adj_rsq_mod = summary(udemy_mod)$adj.r.squared
+adj_rsq_mod_back_aic = summary(udemy_mod_back_aic)$adj.r.squared
+adj_rsq_mod_back_bic = summary(udemy_mod_back_bic)$adj.r.squared
+adj_rsq_mod_forward_aic = summary(udemy_mod_forward_aic)$adj.r.squared
+adj_rsq_mod_forward_bic = summary(udemy_mod_forward_bic)$adj.r.squared
+adj_rsq_mod_both_aic = summary(udemy_mod_both_aic)$adj.r.squared
+adj_rsq_mod_both_bic = summary(udemy_mod_both_bic)$adj.r.squared
 
-calc_loocv_rmse(udemy_mod)
-calc_loocv_rmse(udemy_mod_back_aic)
-calc_loocv_rmse(udemy_mod_back_bic)
-calc_loocv_rmse(udemy_mod_forward_aic)
-calc_loocv_rmse(udemy_mod_forward_bic)
-calc_loocv_rmse(udemy_mod_both_aic)
-calc_loocv_rmse(udemy_mod_both_bic)
+loocv_adj_rsq_mod = calc_loocv_rmse(udemy_mod)
+loocv_rmse_mod_back_aic = calc_loocv_rmse(udemy_mod_back_aic)
+loocv_rms_mod_back_bic = calc_loocv_rmse(udemy_mod_back_bic)
+loocv_rms_mod_forward_aic = calc_loocv_rmse(udemy_mod_forward_aic)
+loocv_rms_mod_forward_bic = calc_loocv_rmse(udemy_mod_forward_bic)
+loocv_rms_mod_both_aic = calc_loocv_rmse(udemy_mod_both_aic)
+loocv_rms_mod_both_bic = calc_loocv_rmse(udemy_mod_both_bic)
+
+criterion = data.frame(
+  'Criterion' = c(
+    'additive',
+    'Backward Search AIC',
+    'Backward Search BIC',
+    'Forward Search AIC',
+    'Forward Search BIC',
+    'Stepwise Search AIC',
+    'Stepwise Search BIC'
+  ),
+  'Adjusted R^2' = c(
+    adj_rsq_mod,
+    adj_rsq_mod_back_aic,
+    adj_rsq_mod_back_bic,
+    adj_rsq_mod_forward_aic,
+    adj_rsq_mod_forward_bic,
+    adj_rsq_mod_both_aic,
+    adj_rsq_mod_both_bic
+  ),
+  'LOOCV_RMSE' = c(
+    loocv_adj_rsq_mod,
+    loocv_rmse_mod_back_aic,
+    loocv_rms_mod_back_bic,
+    loocv_rms_mod_forward_aic,
+    loocv_rms_mod_forward_bic,
+    loocv_rms_mod_both_aic,
+    loocv_rms_mod_both_bic
+  )
+)
+library(knitr)
+kable(criterion)
+
 
 ```
 
 
-```{r}
+```{r warning=FALSE}
 library(leaps)
 library(lmtest)
 
@@ -300,9 +345,8 @@ combinations = dredge(
 )
 
 
-#Select first result matching criteria (after sorting by bptest and filtering on
+#Anand note - Select first result matching criteria (after sorting by bptest and filtering on
 #loocv_rmse, adj_r2, and df in combinations dataframe)
-
 #This is not necessarily the best model - just using a placeholder - need to try various transformations
 mod_a = lm(
   num_subscribers ~ is_paid + price + num_reviews +
@@ -321,12 +365,12 @@ get_num_params(mod_a)
 
 
 
-```{r}
-#Temporarily removing course_title - discuss parsing options
+```{r warning=FALSE}
+#Anand note - Temporarily removing course_title - discuss parsing options
 library(faraway)
 pairs(udemy[,-c(1)], col = "dodgerblue")
 
-#Retrieved from https://www.reddit.com/r/Rlanguage/comments/q6let2/problems_with_pairs_corrplot_too_big_illegible/
+#Anand note - Retrieved from https://www.reddit.com/r/Rlanguage/comments/q6let2/problems_with_pairs_corrplot_too_big_illegible/
 #Troubleshoot: 'x' must be numeric
 #Temporarily Removed course_title, level, published_timestamp, subject
 cor(udemy[,-c(1,7,9,10)]) %>%
@@ -336,7 +380,9 @@ cor(udemy[,-c(1,7,9,10)]) %>%
 
 
 *** TBD: Higher order terms
-*** TBD: There appear to be outliers - investigate further and remove.  
+
+*** TBD: There appear to be outliers - investigate further and remove.
+
 Confirmed via Kaggle notes: https://www.kaggle.com/code/andrewmvd/udemy-courses-getting-started/notebook - "Our plot is being dragged too much due to some outliers. These outliers have either a great amount of reviews (>2000) or great number of subscribers (>10000)."
 
 
