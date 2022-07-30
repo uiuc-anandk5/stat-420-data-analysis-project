@@ -190,13 +190,13 @@ calc_loocv_rmse = function(model) {
 traceValue = 0
 
 #Backward AIC Search
-udemy_mod_back_aic = step(udemy_mod, direction = "backward", trace = 1)
+udemy_mod_back_aic = step(udemy_mod, direction = "backward", trace = traceValue)
 
 #Backward BIC Search
 udemy_mod_back_bic = step(udemy_mod,
                           direction = "backward",
                           k = log(n),
-                          trace = 1)
+                          trace = traceValue)
 
 #Forward AIC Search
 udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
