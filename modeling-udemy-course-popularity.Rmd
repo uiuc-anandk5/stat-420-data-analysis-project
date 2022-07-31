@@ -378,6 +378,20 @@ cor(udemy[,-c(1,7,9,10)]) %>%
   tidyr::pivot_longer(!var1, names_to = "var2", values_to = "corr")
 ```
 
+```{r}
+#Anand note: A much better correlation plot allowing for non-numeric factors
+#https://stackoverflow.com/questions/52554336/plot-the-equivalent-of-correlation-matrix-for-factors-categorical-data-and-mi
+library(ggcorrplot)
+
+#Removed course_title
+model.matrix(~0+., data=udemy[-c(1)]) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag = F, type="lower", lab=TRUE, lab_size=2)
+
+```
+
+
+
 
 *** TBD: Higher order terms
 
