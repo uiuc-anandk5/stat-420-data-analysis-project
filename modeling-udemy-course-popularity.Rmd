@@ -175,7 +175,7 @@ model1 = train(scope1, data = udemy, method = "lm", trControl = train.control)
 scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
 model2 = train(scope2, data = udemy, method = "lm", trControl = train.control)
 
-scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + log(content_duration) + subject + log(days) + log(num_lectures):log(content_duration)
+scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + subject + log(days) + log(num_lectures):log(content_duration)
 model3 = train(scope3, data = udemy, method = "lm", trControl = train.control)
 
 scope4 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(num_lectures) + log(days) + subject
