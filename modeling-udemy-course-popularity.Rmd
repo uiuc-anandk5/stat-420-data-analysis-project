@@ -130,7 +130,7 @@ udemy = read_csv("udemy_courses.csv", show_col_types = FALSE)
 Response: num_subscribers
 Predictors:
 - course_id: Not relevant
-- course_title: May be relevant
+- course_title: May be relevant with some text processing
 - url: Not relevant
 - is_paid: May be relevant
 - price: May be relevant
@@ -145,7 +145,7 @@ Predictors:
 
 ```{r}
 # Removing irrelevant features
-udemy = subset(udemy,select=-c(course_id,url))
+udemy = subset(udemy,select=-c(course_id,url,course_title))
 
 # Coercing level and subject to factor variables
 udemy$level = as.factor(udemy$level)
@@ -160,6 +160,9 @@ udemy = subset(udemy,select=-c(published_timestamp))
 # Replacing price in BRL with price in USD according to
 #  the exchange rate of 0.1708 on 5/16/2020
 udemy$price = udemy$price * 0.1708
+
+# Removing course #893 which had no lectures or content duration
+udemy = udemy[c(1:892,894:3677),]
 ```
 
 ### Initial Data Exploration
@@ -201,10 +204,12 @@ plot(x = udemy$days, y = log(udemy$num_subscribers),
 #See report.html
 ```
 
+### Model Exploration
 
+#### Setting up initial model for exploration
 ```{r}
-#Anand note - Temporarily removing course_title - discuss parsing options
-udemy_mod = lm(num_subscribers ~ .-course_title, data = udemy)
+
+udemy_mod = lm(num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + content_duration + subject + days, data = udemy)
 summary(udemy_mod)
 (n = length(resid(udemy_mod)))
 ```
