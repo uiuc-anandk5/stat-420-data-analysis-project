@@ -234,7 +234,7 @@ udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
 udemy_mod_forward_aic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + published_timestamp + subject,
+    content_duration + days + subject,
   direction = "forward",
   trace = traceValue
 )
@@ -243,7 +243,7 @@ udemy_mod_forward_aic = step(
 udemy_mod_forward_bic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + published_timestamp + subject,
+    content_duration + days + subject,
   direction = "forward",
   k = log(n),
   trace = traceValue
@@ -253,7 +253,7 @@ udemy_mod_forward_bic = step(
 udemy_mod_both_aic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + published_timestamp + subject,
+    content_duration + days + subject,
   direction = "both",
   trace = traceValue
 )
@@ -262,7 +262,7 @@ udemy_mod_both_aic = step(
 udemy_mod_both_bic = step(
   udemy_mod_start,
   scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + published_timestamp + subject,
+    content_duration + days + subject,
   direction = "both",
   k = log(n),
   trace = traceValue
@@ -352,7 +352,7 @@ n = nrow(udemy)
 
 udemy_model_dredge = lm(
   num_subscribers ~ is_paid + price + num_reviews +
-    level + published_timestamp + subject,
+    level + days + subject,
   data = udemy,
   na.action = na.fail
 )
@@ -381,7 +381,7 @@ combinations = dredge(
 #This is not necessarily the best model - just using a placeholder - need to try various transformations
 selected_model = lm(
   num_subscribers ~ is_paid + price + num_reviews +
-    level + published_timestamp + subject,
+    level + days + subject,
   data = udemy
 )
 
@@ -404,6 +404,7 @@ pairs(udemy[,-c(1)], col = "dodgerblue")
 #Anand note - Retrieved from https://www.reddit.com/r/Rlanguage/comments/q6let2/problems_with_pairs_corrplot_too_big_illegible/
 #Troubleshoot: 'x' must be numeric
 #Temporarily Removed course_title, level, published_timestamp, subject
+#Note, this code needs to be updated because the ordering of columns might be different after removal of published_timestamp --AW
 cor(udemy[,-c(1,7,9,10)]) %>%
   tibble::as_tibble(rownames = "var1") %>%
   tidyr::pivot_longer(!var1, names_to = "var2", values_to = "corr")
@@ -485,7 +486,7 @@ What happens if we remove these observations?
 # Modify this when modifying earlier chunk
 selected_model_fixed = lm(
   num_subscribers ~ is_paid + price + num_reviews + 
-    level + published_timestamp + subject, data = udemy,
+    level + days + subject, data = udemy,
   subset = cooks_distance <= 4 / length(cooks_distance)
 )
 coef(selected_model_fixed)
