@@ -142,18 +142,15 @@ summary(udemy_mod)
 ```
 ```{r}
 #experimenting with log transformations
-#udemy_log_mod = lm(log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + num_lectures + level + log(content_duration) + subject + log(days),
-#                   data = udemy)
-udemy_log_mod = lm(log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + log(content_duration) + subject + log(days) + log(num_lectures):log(content_duration) + is_paid:log1p(price), data = udemy)
+full_scope=log1p(num_subscribers) ~ I(log1p(price) ^ 2) + log1p(num_reviews) + log(content_duration) + days + subject + level
+udemy_log_mod = lm(full_scope, data = udemy)
 
 
 summary(udemy_log_mod)
 udemy_mod_back_aic = step(udemy_log_mod, direction = "both", trace = 0, 
-                          scope = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + log(content_duration) + subject + log(days) + log(num_lectures):log(content_duration) + is_paid:log1p(price))
+                          scope = full_scope)
 udemy_mod_back_bic = step(udemy_log_mod, direction = "both", trace = 0, k = log(n),
-                          scope = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + log(content_duration) + subject + log(days) + log(num_lectures):log(content_duration) + is_paid:log1p(price))
-summary(udemy_mod_back_aic)
-summary(udemy_mod_back_bic)
+                          scope = full_scope)
 ```
 
 ```{r}
@@ -174,7 +171,7 @@ get_bp_decision(udemy_log_mod, alpha = 0.01)
 shapiro.test(resid(udemy_log_mod))$p.value
 get_sw_decision(udemy_log_mod, alpha = 0.01)
 get_num_params(udemy_log_mod)
-
+print('...................')
 get_loocv_rmse(udemy_mod_back_aic)
 get_adj_r2(udemy_mod_back_aic)
 bptest(udemy_mod_back_aic)$p.value
@@ -182,7 +179,7 @@ get_bp_decision(udemy_mod_back_aic, alpha = 0.01)
 shapiro.test(resid(udemy_mod_back_aic))$p.value
 get_sw_decision(udemy_mod_back_aic, alpha = 0.01)
 get_num_params(udemy_mod_back_aic)
-
+print('...................')
 get_loocv_rmse(udemy_mod_back_bic)
 get_adj_r2(udemy_mod_back_bic)
 bptest(udemy_mod_back_bic)$p.value
