@@ -81,7 +81,7 @@ The dataset has 3682 records of courses, each with 12 different variables. The m
 
 - Course title
 - Whether the course is free or paid
-- Price of course
+- Price of course (in Brazilian Real)
 - Number of subscribers
 - Number of reviews
 - Number of lectures
@@ -120,15 +120,12 @@ Your task is not to use as many methods as possible. Your task is to use appropr
 
 ***
 
+### Importing the Data and Feature Descriptions
 
 ```{r}
 library(readr)
-udemy = read_csv("udemy_courses.csv")
-
+udemy = read_csv("udemy_courses.csv", show_col_types = FALSE)
 ```
-
-
-
 
 Response: num_subscribers
 Predictors:
@@ -144,22 +141,56 @@ Predictors:
 - published_timestamp: May be relevant
 - subject: May be relevant - As Factor
 
+### Data Preprocessing
 
 ```{r}
+# Removing irrelevant features
 udemy = subset(udemy,select=-c(course_id,url))
+
+# Coercing level and subject to factor variables
 udemy$level = as.factor(udemy$level)
 udemy$subject = as.factor(udemy$subject)
+
+# Replacing timestamp with days since the course was released
+dates = as.Date(substr(udemy$published_timestamp,1,10))
+data_retrieval_date = as.Date('2020-05-16')
+udemy$days = as.integer(data_retrieval_date - dates)
+udemy = subset(udemy,select=-c(published_timestamp))
+
+# Replacing price in BRL with price in USD according to
+#  the exchange rate of 0.1708 on 5/16/2020
+udemy$price = udemy$price * 0.1708
 ```
 
+### Initial Data Exploration
 
-
-```{r}
-#View(udemy)
+```{r, warning = FALSE}
 library(dplyr)
 glimpse(udemy)
 summary(udemy)
 ```
+#### Initial Exploration of Quantitative Variables
+```{r}
+plot(x = udemy$price, y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Price", 
+     xlab = "Price (in USD)", ylab = "Log Number of Subscribers")
 
+plot(x = log(udemy$num_reviews), y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Log Number of Reviews", 
+     xlab = "Log Number of Reviews", ylab = "Log Number of Subscribers")
+
+plot(x = log(udemy$num_lectures), y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Log Number of Lectures", 
+     xlab = "Log Number of Lectures", ylab = "Log Number of Subscribers")
+
+plot(x = log(udemy$content_duration), y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Log Content Duration", 
+     xlab = "Log Content Duration (in Hours)", ylab = "Log Number of Subscribers")
+
+plot(x = udemy$days, y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Days Since Release", 
+     xlab = "Number of Days Since Course Release", ylab = "Log Number of Subscribers")
+```
 
 
 ```{r warning=FALSE}
