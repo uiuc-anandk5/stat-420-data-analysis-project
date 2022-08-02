@@ -169,22 +169,29 @@ library(caret)
 
 train.control <- trainControl(method = "cv", number = 10)
 
-scope1 = log1p(num_subscribers) ~ I(log1p(price) ^ 2) + log1p(num_reviews) + log(content_duration) + days + subject + level
+scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(content_duration) * log(num_lectures) + log(days) + subject + level
 model1 = train(scope1, data = udemy, method = "lm", trControl = train.control)
 
 scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
-model2 <- train(scope2, data = udemy, method = "lm", trControl = train.control)
+model2 = train(scope2, data = udemy, method = "lm", trControl = train.control)
+
+scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + log(content_duration) + subject + log(days) + log(num_lectures):log(content_duration)
+model3 = train(scope3, data = udemy, method = "lm", trControl = train.control)
 
 criterion = data.frame(
-  'Criterion' = c('Model 1'),
+  'Criterion' = c('Model 1', 'Model 2', 'Model 3'),
   'Adjusted R^2' = c(summary(model1)$adj.r.squared, 
-                     summary(model2)$adj.r.squared),
+                     summary(model2)$adj.r.squared,
+                     summary(model3)$adj.r.squared),
   'RMSE' = c(expm1(model1$results$RMSE),
-             model2$results$RMSE),
-  'BP Test' = c(bptest(model1$finalModel)$p.value,
-                bptest(model2$finalModel)$p.value),
-  'Shapiro Test' = c(shapiro.test(resid(model1$finalModel))$p.value,
-                     shapiro.test(resid(model2$finalModel))$p.value)
+             model2$results$RMSE,
+             expm1(model3$results$RMSE)),
+  'BP Test' = c(as.character(bptest(model1$finalModel)$p.value),
+                bptest(model2$finalModel)$p.value,
+                bptest(model3$finalModel)$p.value),
+  'Shapiro Test' = c(as.character(shapiro.test(resid(model1$finalModel))$p.value),
+                     shapiro.test(resid(model2$finalModel))$p.value,
+                     shapiro.test(resid(model3$finalModel))$p.value)
 )
 library(knitr)
 kable(criterion)
