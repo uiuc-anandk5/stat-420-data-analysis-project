@@ -178,20 +178,39 @@ model2 = train(scope2, data = udemy, method = "lm", trControl = train.control)
 scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + log(content_duration) + subject + log(days) + log(num_lectures):log(content_duration)
 model3 = train(scope3, data = udemy, method = "lm", trControl = train.control)
 
+scope4 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(num_lectures) + log(days) + subject
+model4 = train(scope4, data = udemy, method = "lm", trControl = train.control)
+
+scope5 = num_subscribers ~ num_reviews * is_paid + price + level + days + subject
+model5 = train(scope5, data = udemy, method = "lm", trControl = train.control)
+
 criterion = data.frame(
-  'Criterion' = c('Model 1', 'Model 2', 'Model 3'),
+  'Criterion' = c('Model 1', 'Model 2', 'Model 3','Model 4', 'Model 5'),
   'Adjusted R^2' = c(summary(model1)$adj.r.squared, 
                      summary(model2)$adj.r.squared,
-                     summary(model3)$adj.r.squared),
+                     summary(model3)$adj.r.squared,
+                     summary(model4)$adj.r.squared,
+                     summary(model5)$adj.r.squared),
   'RMSE' = c(expm1(model1$results$RMSE),
              model2$results$RMSE,
-             expm1(model3$results$RMSE)),
+             expm1(model3$results$RMSE),
+             expm1(model4$results$RMSE),
+             model5$results$RMSE),
   'BP Test' = c(as.character(bptest(model1$finalModel)$p.value),
                 bptest(model2$finalModel)$p.value,
-                bptest(model3$finalModel)$p.value),
+                bptest(model3$finalModel)$p.value,
+                bptest(model4$finalModel)$p.value,
+                bptest(model5$finalModel)$p.value),
   'Shapiro Test' = c(as.character(shapiro.test(resid(model1$finalModel))$p.value),
                      shapiro.test(resid(model2$finalModel))$p.value,
-                     shapiro.test(resid(model3$finalModel))$p.value)
+                     shapiro.test(resid(model3$finalModel))$p.value,
+                     shapiro.test(resid(model4$finalModel))$p.value,
+                     shapiro.test(resid(model5$finalModel))$p.value),
+  'Num Params' = c(length(coef(model1$finalModel)),
+                   length(coef(model2$finalModel)),
+                   length(coef(model3$finalModel)),
+                   length(coef(model4$finalModel)),
+                   length(coef(model5$finalModel)))
 )
 library(knitr)
 kable(criterion)
