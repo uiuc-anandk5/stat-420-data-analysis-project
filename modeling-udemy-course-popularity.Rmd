@@ -140,18 +140,6 @@ udemy_mod = lm(num_subscribers ~ is_paid + price + num_reviews + num_lectures + 
 summary(udemy_mod)
 (n = length(resid(udemy_mod)))
 ```
-```{r}
-#experimenting with log transformations
-full_scope=log1p(num_subscribers) ~ I(log1p(price) ^ 2) + log1p(num_reviews) + log(content_duration) + days + subject + level
-udemy_log_mod = lm(full_scope, data = udemy)
-
-
-summary(udemy_log_mod)
-udemy_mod_back_aic = step(udemy_log_mod, direction = "both", trace = 0, 
-                          scope = full_scope)
-udemy_mod_back_bic = step(udemy_log_mod, direction = "both", trace = 0, k = log(n),
-                          scope = full_scope)
-```
 
 ```{r}
 # checking for which variables have a lot of skew from normal distribution
@@ -163,30 +151,43 @@ skewness(udemy$num_lectures)
 ```
 
 ```{r}
-# checking metrics on log models
-get_loocv_rmse(udemy_log_mod)
-get_adj_r2(udemy_log_mod)
-bptest(udemy_log_mod)$p.value
-get_bp_decision(udemy_log_mod, alpha = 0.01)
-shapiro.test(resid(udemy_log_mod))$p.value
-get_sw_decision(udemy_log_mod, alpha = 0.01)
-get_num_params(udemy_log_mod)
-print('...................')
-get_loocv_rmse(udemy_mod_back_aic)
-get_adj_r2(udemy_mod_back_aic)
-bptest(udemy_mod_back_aic)$p.value
-get_bp_decision(udemy_mod_back_aic, alpha = 0.01)
-shapiro.test(resid(udemy_mod_back_aic))$p.value
-get_sw_decision(udemy_mod_back_aic, alpha = 0.01)
-get_num_params(udemy_mod_back_aic)
-print('...................')
-get_loocv_rmse(udemy_mod_back_bic)
-get_adj_r2(udemy_mod_back_bic)
-bptest(udemy_mod_back_bic)$p.value
-get_bp_decision(udemy_mod_back_bic, alpha = 0.01)
-shapiro.test(resid(udemy_mod_back_bic))$p.value
-get_sw_decision(udemy_mod_back_bic, alpha = 0.01)
-get_num_params(udemy_mod_back_bic)
+#experimenting with log transformations
+full_scope=log1p(num_subscribers) ~ I(log1p(price) ^ 2) + log1p(num_reviews) + log(content_duration) + days + subject + level
+udemy_log_mod = lm(full_scope, data = udemy)
+n = length(resid(udemy_log_mod))
+udemy_mod_back_aic = step(udemy_log_mod, direction = "both", trace = 0, scope = full_scope)
+udemy_mod_back_bic = step(udemy_log_mod, direction = "both", trace = 0, k = log(n), scope = full_scope)
+summary(udemy_log_mod)
+summary(udemy_mod_back_aic)
+summary(udemy_mod_back_bic)
+```
+
+
+```{r}
+# checking metrics
+library(caret)
+
+train.control <- trainControl(method = "cv", number = 10)
+
+scope1 = log1p(num_subscribers) ~ I(log1p(price) ^ 2) + log1p(num_reviews) + log(content_duration) + days + subject + level
+model1 = train(scope1, data = udemy, method = "lm", trControl = train.control)
+
+scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
+model2 <- train(scope2, data = udemy, method = "lm", trControl = train.control)
+
+criterion = data.frame(
+  'Criterion' = c('Model 1'),
+  'Adjusted R^2' = c(summary(model1)$adj.r.squared, 
+                     summary(model2)$adj.r.squared),
+  'RMSE' = c(expm1(model1$results$RMSE),
+             model2$results$RMSE),
+  'BP Test' = c(bptest(model1$finalModel)$p.value,
+                bptest(model2$finalModel)$p.value),
+  'Shapiro Test' = c(shapiro.test(resid(model1$finalModel))$p.value,
+                     shapiro.test(resid(model2$finalModel))$p.value)
+)
+library(knitr)
+kable(criterion)
 ```
 
 ```{r}
