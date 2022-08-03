@@ -48,24 +48,28 @@ All of our team members are working / have worked in education-related careers, 
 
 ### Importing the Data and Feature Descriptions
 
+First, we downloaded the original data file from Kaggle, as linked in the introduction. 
+
 ```{r}
 library(readr)
 udemy = read_csv("udemy_courses.csv", show_col_types = FALSE)
 ```
 
+We then examined the features to determine which were relevant to us:
+
 Response: num_subscribers
 Predictors:
-- course_id: Not relevant
-- course_title: May be relevant with some text processing
-- url: Not relevant
-- is_paid: May be relevant
-- price: May be relevant
-- num_reviews: May be relevant
-- num_lectures: May be relevant
-- level: May be relevant - As Factor
-- content_duration: May be relevant
+- course_id: randomized id assigned to each course (not relevant)
+- course_title: title of the course (possibly relevant with some text processing)
+- url: url of the course (not relevant)
+- is_paid: boolean representing if the course is paid (relevant)
+- price: price of the course in Brazilian Real as of 5/16/20 (relevant)
+- num_reviews: number of reviews for the course as of 5/16/20 (relevant)
+- num_lectures: number of lectures in the course as of 5/16/20 (relevant)
+- level: level of difficulty of the course-- either all, beginner, intermediate or expert (relevant)
+- content_duration: duration of the course in hours (relevant)
 - published_timestamp: May be relevant
-- subject: May be relevant - As Factor
+- subject: May be relevant as factor
 
 ### Data Preprocessing
 
@@ -123,13 +127,6 @@ plot(x = udemy$days, y = log(udemy$num_subscribers),
 ```
 
 
-```{r warning=FALSE}
-#Anand note - Delete chunk prior to submitting.  For insights only.  We should replicate specific analysis manually.
-#install.packages("DataExplorer")
-#library(DataExplorer)
-#DataExplorer::create_report(udemy)
-#See report.html
-```
 
 ### Model Exploration
 
@@ -287,7 +284,7 @@ test_mapes = c(get_mape(model1_all, TRUE), get_mape(model1_without_influential, 
                get_mape(model5_all, FALSE), get_mape(model5_without_influential, FALSE))
 
 get_aic = function(model, log){
-  resid = if(log == TRUE) {expm1(resid(model))}
+  resid = if(log == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
             else {resid(model)}
   n = length(resid(model))
   p = length(coef(model))
@@ -301,7 +298,7 @@ test_aic = c(get_aic(model1_all$finalModel, TRUE), get_aic(model1_without_influe
                get_aic(model5_all$finalModel, FALSE), get_aic(model5_without_influential$finalModel, FALSE))
 
 get_bic = function(model, log){
-  resid = if(log == TRUE) {expm1(resid(model))}
+  resid = if(log == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
             else {resid(model)}
   n = length(resid(model))
   p = length(coef(model))
