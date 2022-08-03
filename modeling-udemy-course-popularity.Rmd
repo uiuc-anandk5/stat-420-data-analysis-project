@@ -167,10 +167,13 @@ summary(udemy_mod_back_bic)
 # checking metrics
 library(caret)
 
+
+
+
 train.control <- trainControl(method = "cv", number = 10)
 
 scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(content_duration) * log(num_lectures) + log(days) + subject + level
-model1 = train(scope1, data = udemy, method = "lm", trControl = train.control)
+model1_all = train(scope1, data = udemy, method = "lm", trControl = train.control)
 
 scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
 model2 = train(scope2, data = udemy, method = "lm", trControl = train.control)
@@ -215,6 +218,82 @@ criterion = data.frame(
 library(knitr)
 kable(criterion)
 ```
+
+Deciding which model is best. All models here are trained on only the training data. Some are trained on all training data while others are only trained on non-influential points in training data
+
+```{r}
+udemy_train_idx = sample(nrow(udemy), size = trunc(0.70 * nrow(udemy)))
+udemy_train = udemy[udemy_train_idx,]
+udemy_test = udemy[-udemy_train_idx,]
+
+library(caret)
+
+train.control <- trainControl(method = "cv", number = 10)
+
+scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(content_duration) * log(num_lectures) + log(days) + subject + level
+model1_all = train(scope1, data = udemy_train, method = "lm", trControl = train.control)
+cooks_dist = cooks.distance(model1_all$finalModel)
+model1_without_influential = train(scope1, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+
+scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
+model2_all = train(scope2, data = udemy_train, method = "lm", trControl = train.control)
+cooks_dist = cooks.distance(model2_all$finalModel)
+model2_without_influential = train(scope2, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+
+scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + log(content_duration) + subject + log(days) + log(num_lectures):log(content_duration)
+model3_all = train(scope3, data = udemy_train, method = "lm", trControl = train.control)
+cooks_dist = cooks.distance(model3_all$finalModel)
+model3_without_influential = train(scope3, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+
+scope4 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(num_lectures) + log(days) + subject
+model4_all = train(scope4, data = udemy_train, method = "lm", trControl = train.control)
+cooks_dist = cooks.distance(model4_all$finalModel)
+model4_without_influential = train(scope4, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+
+scope5 = num_subscribers ~ num_reviews * is_paid + price + level + days + subject
+model5_all = train(scope5, data = udemy_train, method = "lm", trControl = train.control)
+cooks_dist = cooks.distance(model5_all$finalModel)
+model5_without_influential = train(scope5, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+
+model_names = c('Model 1', 'Model 1 w/o outliers', 'Model 2', 'Model 2 w/o outliers', 'Model 3', 'Model 3 w/o outliers', 'Model 4', 'Model 4 w/o outliers', 'Model 5', 'Model 5 w/o outliers')
+adj_r_2 = c(summary(model1_all)$adj.r.squared, summary(model1_without_influential)$adj.r.squared,
+            summary(model2_all)$adj.r.squared, summary(model2_without_influential)$adj.r.squared,
+            summary(model3_all)$adj.r.squared, summary(model3_without_influential)$adj.r.squared,
+            summary(model4_all)$adj.r.squared, summary(model4_without_influential)$adj.r.squared,
+            summary(model5_all)$adj.r.squared, summary(model5_without_influential)$adj.r.squared)
+
+get_rmse = function(model, log){
+  preds = ifelse(log == TRUE, expm1(predict(model, newdata = udemy_test)), predict(model, newdata = udemy_test))
+  sqrt(mean((preds - udemy_test$num_subscribers) ^ 2))
+}
+
+test_rmses = c(get_rmse(model1_all, TRUE), get_rmse(model1_without_influential, TRUE),
+               get_rmse(model2_all, FALSE), get_rmse(model2_without_influential, FALSE),
+               get_rmse(model3_all, TRUE), get_rmse(model3_without_influential, TRUE),
+               get_rmse(model4_all, TRUE), get_rmse(model4_without_influential, TRUE),
+               get_rmse(model5_all, FALSE), get_rmse(model5_without_influential, FALSE)) 
+  
+get_mape = function(model, log){
+  preds = ifelse(log == TRUE, expm1(predict(model, newdata = udemy_test)), predict(model, newdata = udemy_test))
+  mean(abs((preds - udemy_test$num_subscribers) / preds) * 100)
+}
+
+test_mapes = c(get_mape(model1_all, TRUE), get_mape(model1_without_influential, TRUE),
+               get_mape(model2_all, FALSE), get_mape(model2_without_influential, FALSE),
+               get_mape(model3_all, TRUE), get_mape(model3_without_influential, TRUE),
+               get_mape(model4_all, TRUE), get_mape(model4_without_influential, TRUE),
+               get_mape(model5_all, FALSE), get_mape(model5_without_influential, FALSE))
+
+criterion = data.frame(
+  'Criterion' = model_names,
+  'Adjusted R^2' = adj_r_2,
+  'RMSE' = test_rmses,
+  'MAPE' = test_mapes
+)
+library(knitr)
+kable(criterion)
+```
+
 
 ```{r}
 calc_loocv_rmse = function(model) {
