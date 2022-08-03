@@ -55,12 +55,12 @@ library(readr)
 udemy = read_csv("udemy_courses.csv", show_col_types = FALSE)
 ```
 
-We then examined the features to determine which were relevant to us:
+We then examined the features to determine which were relevant to us. The feature descriptions and our determination on their relevance are below:
 
 Response: num_subscribers
 Predictors:
 - course_id: randomized id assigned to each course (not relevant)
-- course_title: title of the course (possibly relevant with some text processing)
+- course_title: title of the course (possibly relevant with some text processing, but we didn't have time to pursue this option)
 - url: url of the course (not relevant)
 - is_paid: boolean representing if the course is paid (relevant)
 - price: price of the course in Brazilian Real as of 5/16/20 (relevant)
@@ -68,10 +68,12 @@ Predictors:
 - num_lectures: number of lectures in the course as of 5/16/20 (relevant)
 - level: level of difficulty of the course-- either all, beginner, intermediate or expert (relevant)
 - content_duration: duration of the course in hours (relevant)
-- published_timestamp: May be relevant
-- subject: May be relevant as factor
+- published_timestamp: date the course was published, represented as a string (relevant after processing)
+- subject: subject the course falls within, either web development, business finance, musical instruments, or graphic design (relevant)
 
 ### Data Preprocessing
+
+Next, we preprocessed the data by removing irrelevant features, and coercing "level", "subject", and "is_paid" to factor variables. We also used the "published_timestamp" information to instead create a new column called "days", which represents the number of days from the course's release to the day the data was retrieved. After this new column was created, we deleted "published_timestamp". The other column we altered was the "price" column, which we converted from Brazilian Real to USD according to the exchange rate on the day of data retrieval. Finally, we removed the only course in the data that did not have any lectures or content, since that shouldn't even be a valid course on Udemy.
 
 ```{r}
 # Removing irrelevant features
@@ -98,160 +100,57 @@ udemy = udemy[c(1:892,894:3677),]
 
 ### Initial Data Exploration
 
-```{r, warning = FALSE}
-library(dplyr)
-glimpse(udemy)
-summary(udemy)
-```
-#### Initial Exploration of Quantitative Variables
-```{r}
-plot(x = udemy$price, y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Price", 
-     xlab = "Price (in USD)", ylab = "Log Number of Subscribers")
-
-plot(x = log(udemy$num_reviews), y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Log Number of Reviews", 
-     xlab = "Log Number of Reviews", ylab = "Log Number of Subscribers")
-
-plot(x = log(udemy$num_lectures), y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Log Number of Lectures", 
-     xlab = "Log Number of Lectures", ylab = "Log Number of Subscribers")
-
-plot(x = log(udemy$content_duration), y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Log Content Duration", 
-     xlab = "Log Content Duration (in Hours)", ylab = "Log Number of Subscribers")
-
-plot(x = udemy$days, y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Days Since Release", 
-     xlab = "Number of Days Since Course Release", ylab = "Log Number of Subscribers")
-```
-
-
+After preprocessing the data, we wanted to explore the data a little bit more, so we looked at a summary of the dataset and plotted a few graphs that helped us better understand the relationships between our response variable, "num_subscribers", and some of the other quantitative variables. While not directly related to our model exploration, it did help us decide which features we more strongly wanted to perform a log transform on. The code and results for this section can be found in [Appendix Part A](#Part A). ____TO ADD: include why we did the "pairs" and "cor" code too! the code itself is already included in the appendix with the rest. Also a discussion on why we looked at skew_______
 
 ### Model Exploration
 
-#### Setting up initial model for exploration
-```{r}
-
-udemy_mod = lm(num_subscribers ~ is_paid + price + num_reviews + num_lectures + level + content_duration + subject + days, data = udemy)
-summary(udemy_mod)
-(n = length(resid(udemy_mod)))
-```
+When trying to identify an ideal model, we experimented with many different combinations of predictors and used transforms, interactions, and polynomial models to try and produce the best result. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transforms of the response, and others did not.
 
 ```{r}
-# checking for which variables have a lot of skew from normal distribution
-library(moments)
-skewness(udemy$days)
-skewness(udemy$content_duration)
-skewness(udemy$price)
-skewness(udemy$num_lectures)
-```
-
-```{r}
-#experimenting with log transformations
-full_scope=log1p(num_subscribers) ~ I(log1p(price) ^ 2) + log1p(num_reviews) + log(content_duration) + days + subject + level
-udemy_log_mod = lm(full_scope, data = udemy)
-n = length(resid(udemy_log_mod))
-udemy_mod_back_aic = step(udemy_log_mod, direction = "both", trace = 0, scope = full_scope)
-udemy_mod_back_bic = step(udemy_log_mod, direction = "both", trace = 0, k = log(n), scope = full_scope)
-summary(udemy_log_mod)
-summary(udemy_mod_back_aic)
-summary(udemy_mod_back_bic)
-```
-
-
-```{r}
-# checking metrics
-library(caret)
-
-
-
-
-train.control <- trainControl(method = "cv", number = 10)
-
 scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(content_duration) * log(num_lectures) + log(days) + subject + level
-model1_all = train(scope1, data = udemy, method = "lm", trControl = train.control)
-
 scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
-model2 = train(scope2, data = udemy, method = "lm", trControl = train.control)
-
 scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + subject + log(days) + log(num_lectures):log(content_duration)
-model3 = train(scope3, data = udemy, method = "lm", trControl = train.control)
-
 scope4 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(num_lectures) + log(days) + subject
-model4 = train(scope4, data = udemy, method = "lm", trControl = train.control)
-
 scope5 = num_subscribers ~ num_reviews * is_paid + price + level + days + subject
-model5 = train(scope5, data = udemy, method = "lm", trControl = train.control)
-
-criterion = data.frame(
-  'Criterion' = c('Model 1', 'Model 2', 'Model 3','Model 4', 'Model 5'),
-  'Adjusted R^2' = c(summary(model1)$adj.r.squared, 
-                     summary(model2)$adj.r.squared,
-                     summary(model3)$adj.r.squared,
-                     summary(model4)$adj.r.squared,
-                     summary(model5)$adj.r.squared),
-  'RMSE' = c(expm1(model1$results$RMSE),
-             model2$results$RMSE,
-             expm1(model3$results$RMSE),
-             expm1(model4$results$RMSE),
-             model5$results$RMSE),
-  'BP Test' = c(as.character(bptest(model1$finalModel)$p.value),
-                bptest(model2$finalModel)$p.value,
-                bptest(model3$finalModel)$p.value,
-                bptest(model4$finalModel)$p.value,
-                bptest(model5$finalModel)$p.value),
-  'Shapiro Test' = c(as.character(shapiro.test(resid(model1$finalModel))$p.value),
-                     shapiro.test(resid(model2$finalModel))$p.value,
-                     shapiro.test(resid(model3$finalModel))$p.value,
-                     shapiro.test(resid(model4$finalModel))$p.value,
-                     shapiro.test(resid(model5$finalModel))$p.value),
-  'Num Params' = c(length(coef(model1$finalModel)),
-                   length(coef(model2$finalModel)),
-                   length(coef(model3$finalModel)),
-                   length(coef(model4$finalModel)),
-                   length(coef(model5$finalModel)))
-)
-library(knitr)
-kable(criterion)
 ```
 
-Deciding which model is best. All models here are trained on only the training data. Some are trained on all training data while others are only trained on non-influential points in training data
+Afterwards, we divided the data into a training set and testing set, using a 70-30 split. We only used the training data to train our models, and the testing data to evaluate and compare our models.
 
 ```{r}
 udemy_train_idx = sample(nrow(udemy), size = trunc(0.70 * nrow(udemy)))
 udemy_train = udemy[udemy_train_idx,]
 udemy_test = udemy[-udemy_train_idx,]
+```
 
+At this point, we wanted to see if it would be beneficial to only train the models on the non-influential observations in the training set, while evaluating them on all the observations (both influential and not) later on with the testing set. We ended up training each of the 5 models in 2 ways-- once on all the training data, and once on only the non-influential points of the training data. The models trained on all the training data are referred to as "model1_all", "model2_all", etc and the models trained on only the non-influential points are called "model1_without_influential", "model2_without_influential", etc. Here, we identify influential points using the metric from class, namely all points where the Cook's Distance is greater than $4/n$, $n$ being the number of observations in the data set.
+
+```{r}
 library(caret)
-
 train.control <- trainControl(method = "cv", number = 10)
 
-scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(content_duration) * log(num_lectures) + log(days) + subject + level
 model1_all = train(scope1, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist = cooks.distance(model1_all$finalModel)
 model1_without_influential = train(scope1, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
 
-scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
 model2_all = train(scope2, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist = cooks.distance(model2_all$finalModel)
 model2_without_influential = train(scope2, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
 
-scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + subject + log(days) + log(num_lectures):log(content_duration)
 model3_all = train(scope3, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist = cooks.distance(model3_all$finalModel)
 model3_without_influential = train(scope3, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
 
-scope4 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(num_lectures) + log(days) + subject
 model4_all = train(scope4, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist = cooks.distance(model4_all$finalModel)
 model4_without_influential = train(scope4, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
 
-scope5 = num_subscribers ~ num_reviews * is_paid + price + level + days + subject
 model5_all = train(scope5, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist = cooks.distance(model5_all$finalModel)
 model5_without_influential = train(scope5, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+```
 
+
+```{r}
 model_names = c('Model 1', 'Model 1 w/o outliers', 'Model 2', 'Model 2 w/o outliers', 'Model 3', 'Model 3 w/o outliers', 'Model 4', 'Model 4 w/o outliers', 'Model 5', 'Model 5 w/o outliers')
 adj_r_2 = c(summary(model1_all)$adj.r.squared, summary(model1_without_influential)$adj.r.squared,
             summary(model2_all)$adj.r.squared, summary(model2_without_influential)$adj.r.squared,
@@ -331,115 +230,6 @@ kable(criterion)
 ```
 
 
-```{r}
-calc_loocv_rmse = function(model) {
-  sqrt(mean((resid(model) / (
-    1 - hatvalues(model)
-  )) ^ 2))
-}
-
-#Change traceValue to 1 for output
-traceValue = 0
-
-#Backward AIC Search
-udemy_mod_back_aic = step(udemy_mod, direction = "backward", trace = traceValue)
-
-#Backward BIC Search
-udemy_mod_back_bic = step(udemy_mod,
-                          direction = "backward",
-                          k = log(n),
-                          trace = traceValue)
-
-#Forward AIC Search
-udemy_mod_start = lm(num_subscribers ~ 1, data = udemy)
-udemy_mod_forward_aic = step(
-  udemy_mod_start,
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + days + subject,
-  direction = "forward",
-  trace = traceValue
-)
-
-#Forward BIC Search
-udemy_mod_forward_bic = step(
-  udemy_mod_start,
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + days + subject,
-  direction = "forward",
-  k = log(n),
-  trace = traceValue
-)
-
-#Stepwise AIC Search
-udemy_mod_both_aic = step(
-  udemy_mod_start,
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + days + subject,
-  direction = "both",
-  trace = traceValue
-)
-
-#Stepwise BIC Search
-udemy_mod_both_bic = step(
-  udemy_mod_start,
-  scope = num_subscribers ~ is_paid + price + num_reviews + num_lectures + level +
-    content_duration + days + subject,
-  direction = "both",
-  k = log(n),
-  trace = traceValue
-)
-
-adj_rsq_mod = summary(udemy_mod)$adj.r.squared
-adj_rsq_mod_back_aic = summary(udemy_mod_back_aic)$adj.r.squared
-adj_rsq_mod_back_bic = summary(udemy_mod_back_bic)$adj.r.squared
-adj_rsq_mod_forward_aic = summary(udemy_mod_forward_aic)$adj.r.squared
-adj_rsq_mod_forward_bic = summary(udemy_mod_forward_bic)$adj.r.squared
-adj_rsq_mod_both_aic = summary(udemy_mod_both_aic)$adj.r.squared
-adj_rsq_mod_both_bic = summary(udemy_mod_both_bic)$adj.r.squared
-
-loocv_adj_rsq_mod = calc_loocv_rmse(udemy_mod)
-loocv_rmse_mod_back_aic = calc_loocv_rmse(udemy_mod_back_aic)
-loocv_rms_mod_back_bic = calc_loocv_rmse(udemy_mod_back_bic)
-loocv_rms_mod_forward_aic = calc_loocv_rmse(udemy_mod_forward_aic)
-loocv_rms_mod_forward_bic = calc_loocv_rmse(udemy_mod_forward_bic)
-loocv_rms_mod_both_aic = calc_loocv_rmse(udemy_mod_both_aic)
-loocv_rms_mod_both_bic = calc_loocv_rmse(udemy_mod_both_bic)
-
-criterion = data.frame(
-  'Criterion' = c(
-    'additive',
-    'Backward Search AIC',
-    'Backward Search BIC',
-    'Forward Search AIC',
-    'Forward Search BIC',
-    'Stepwise Search AIC',
-    'Stepwise Search BIC'
-  ),
-  'Adjusted R^2' = c(
-    adj_rsq_mod,
-    adj_rsq_mod_back_aic,
-    adj_rsq_mod_back_bic,
-    adj_rsq_mod_forward_aic,
-    adj_rsq_mod_forward_bic,
-    adj_rsq_mod_both_aic,
-    adj_rsq_mod_both_bic
-  ),
-  'LOOCV_RMSE' = c(
-    loocv_adj_rsq_mod,
-    loocv_rmse_mod_back_aic,
-    loocv_rms_mod_back_bic,
-    loocv_rms_mod_forward_aic,
-    loocv_rms_mod_forward_bic,
-    loocv_rms_mod_both_aic,
-    loocv_rms_mod_both_bic
-  )
-)
-library(knitr)
-kable(criterion)
-
-
-```
-
 
 ```{r warning=FALSE}
 library(leaps)
@@ -516,42 +306,9 @@ get_num_params(selected_model)
 
 
 
-
-```{r warning=FALSE}
-#Anand note - Temporarily removing course_title - discuss parsing options
-library(faraway)
-pairs(udemy[,-c(1)], col = "dodgerblue")
-
-#Anand note - Retrieved from https://www.reddit.com/r/Rlanguage/comments/q6let2/problems_with_pairs_corrplot_too_big_illegible/
-#Troubleshoot: 'x' must be numeric
-#Temporarily Removed course_title, level, published_timestamp, subject
-#Note, this code needs to be updated because the ordering of columns might be different after removal of published_timestamp --AW
-cor(udemy[,-c(1,7,9,10)]) %>%
-  tibble::as_tibble(rownames = "var1") %>%
-  tidyr::pivot_longer(!var1, names_to = "var2", values_to = "corr")
-```
-
-```{r}
-#Anand note: A much better correlation plot allowing for non-numeric factors
-#https://stackoverflow.com/questions/52554336/plot-the-equivalent-of-correlation-matrix-for-factors-categorical-data-and-mi
-library(ggcorrplot)
-
-#Removed course_title
-model.matrix(~0+., data=udemy[-c(1)]) %>% 
-  cor(use="pairwise.complete.obs") %>% 
-  ggcorrplot(show.diag = F, type="lower", lab=TRUE, lab_size=2)
-
-```
-
-
-
-
 *** TBD: Higher order terms
 
 *** TBD: There appear to be outliers - investigate further and remove.
-
-Confirmed via Kaggle notes: https://www.kaggle.com/code/andrewmvd/udemy-courses-getting-started/notebook - "Our plot is being dragged too much due to some outliers. These outliers have either a great amount of reviews (>2000) or great number of subscribers (>10000)."
-
 
 ```{r}
 library(lmtest)
@@ -570,57 +327,7 @@ sum(hatvalues(selected_model) > 2 * mean(hatvalues(selected_model)))
 
 For the Breusch-Pagan test, if we see a small p-value, we reject the null of homoscedasticity. The constant variance assumption is violated.
 
-For the Shaprio-Wilk test, the null hypothesis assumes the data were sampled from a normal distribution, thus a small p-value indicates we believe there is only a small probability the data could have been sampled from a normal distribution.
-
-
-We notice potential outliers.  Let's find large residuals.
-
-
-```{r}
-
-#Large residuals
-( large_residuals = rstandard(selected_model)[abs(rstandard(selected_model)) > 2] )
-length(large_residuals)
-
-```
-
-
-Let's find influential observations
-
-```{r}
-
-#Influential observations
-cooks_distance = cooks.distance(selected_model)
-sum(cooks.distance(selected_model) > 4 / length(cooks.distance(selected_model)))
-
-large_influences = cooks.distance(selected_model) > 
-  4 / length(cooks.distance(selected_model))
-cooks_distance[large_influences]
-
-
-```
-
-What happens if we remove these observations?
-
-```{r}
-#Anand note - This is not necessarily the best model - just using a placeholder -
-# Modify this when modifying earlier chunk
-selected_model_fixed = lm(
-  num_subscribers ~ is_paid + price + num_reviews + 
-    level + days + subject, data = udemy,
-  subset = cooks_distance <= 4 / length(cooks_distance)
-)
-coef(selected_model_fixed)
-
-#Original model
-par(mfrow = c(2, 2))
-plot(selected_model)
-
-#Model after removing influential observations
-par(mfrow = c(2, 2))
-plot(selected_model_fixed)
-```
-
+For the Shapiro-Wilk test, the null hypothesis assumes the data were sampled from a normal distribution, thus a small p-value indicates we believe there is only a small probability the data could have been sampled from a normal distribution.
 
 
 
@@ -652,18 +359,50 @@ The discussion section should contain discussion of your results and should fram
 
 ## Appendix
 
-***
-*** Delete before submitting
+### Appendix Part A {#PartA}
 
-The appendix section should contain code and analysis that is used, but that would have otherwise cluttered the report or is not directly related to the choice of model.  
+```{r, warning = FALSE}
+library(dplyr)
+glimpse(udemy)
+summary(udemy)
 
-Do not simply dump code in here.  
+library(faraway)
+pairs(udemy, col = "dodgerblue")
 
-Only utilize the appendix to supplement the primary focus of the report.  
+# Correlation Matrix
+library(ggcorrplot)
+model.matrix(~0+., data=udemy) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag = F, type="lower", lab=TRUE, lab_size=2)
 
-The appendix should also conclude with the names of the group members. 
+# Checking which variables have a lot of skew from normal 
+library(moments)
+skewness(udemy$days)
+skewness(udemy$content_duration)
+skewness(udemy$price)
+skewness(udemy$num_lectures)
 
-***
+# Plots relating different predictors to the response
+plot(x = udemy$price, y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Price", 
+     xlab = "Price (in USD)", ylab = "Log Number of Subscribers")
+
+plot(x = log(udemy$num_reviews), y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Log Number of Reviews", 
+     xlab = "Log Number of Reviews", ylab = "Log Number of Subscribers")
+
+plot(x = log(udemy$num_lectures), y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Log Number of Lectures", 
+     xlab = "Log Number of Lectures", ylab = "Log Number of Subscribers")
+
+plot(x = log(udemy$content_duration), y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Log Content Duration", 
+     xlab = "Log Content Duration (in Hours)", ylab = "Log Number of Subscribers")
+
+plot(x = udemy$days, y = log(udemy$num_subscribers),
+     main = "Log Number of Subscribers vs. Days Since Release", 
+     xlab = "Number of Days Since Course Release", ylab = "Log Number of Subscribers")
+```
 
 Group Members: Amanda Wang, Anand Kumar, Dani Richmond
 
