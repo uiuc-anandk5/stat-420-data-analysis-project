@@ -104,7 +104,7 @@ After preprocessing the data, we wanted to explore the data a little bit more, s
 
 ### Model Exploration
 
-When trying to identify an ideal model, we experimented with many different combinations of predictors and used transforms, interactions, and polynomial models to try and produce the best result. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transforms of the response, and others did not.
+When trying to identify an ideal model, we experimented with many different combinations of predictors and used transforms, interactions, polynomial, forward/backward AIC/BIC models to try and produce the best result. We do not include this experimental code here or in the appendix because that would cause the report to become too cluttered. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transforms of the response, and others did not.
 
 ```{r}
 scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(content_duration) * log(num_lectures) + log(days) + subject + level
@@ -129,93 +129,117 @@ library(caret)
 train.control <- trainControl(method = "cv", number = 10)
 
 model1_all = train(scope1, data = udemy_train, method = "lm", trControl = train.control)
-cooks_dist = cooks.distance(model1_all$finalModel)
-model1_without_influential = train(scope1, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+cooks_dist1 = cooks.distance(model1_all$finalModel)
+noninfl_idx1 = cooks_dist1 <= 4 / length(cooks_dist1)
+model1_without_influential = train(scope1, data = udemy_train, subset = noninfl_idx1, method = "lm", trControl = train.control)
 
 model2_all = train(scope2, data = udemy_train, method = "lm", trControl = train.control)
-cooks_dist = cooks.distance(model2_all$finalModel)
-model2_without_influential = train(scope2, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+cooks_dist2 = cooks.distance(model2_all$finalModel)
+noninfl_idx2 = cooks_dist2 <= 4 / length(cooks_dist2)
+model2_without_influential = train(scope2, data = udemy_train, subset = noninfl_idx2, method = "lm", trControl = train.control)
 
 model3_all = train(scope3, data = udemy_train, method = "lm", trControl = train.control)
-cooks_dist = cooks.distance(model3_all$finalModel)
-model3_without_influential = train(scope3, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+cooks_dist3 = cooks.distance(model3_all$finalModel)
+noninfl_idx3 = cooks_dist3 <= 4 / length(cooks_dist3)
+model3_without_influential = train(scope3, data = udemy_train, subset = noninfl_idx3, method = "lm", trControl = train.control)
 
 model4_all = train(scope4, data = udemy_train, method = "lm", trControl = train.control)
-cooks_dist = cooks.distance(model4_all$finalModel)
-model4_without_influential = train(scope4, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+cooks_dist4 = cooks.distance(model4_all$finalModel)
+noninfl_idx4 = cooks_dist4 <= 4 / length(cooks_dist4)
+model4_without_influential = train(scope4, data = udemy_train, subset = noninfl_idx4, method = "lm", trControl = train.control)
 
 model5_all = train(scope5, data = udemy_train, method = "lm", trControl = train.control)
-cooks_dist = cooks.distance(model5_all$finalModel)
-model5_without_influential = train(scope5, data = udemy_train, subset = cooks_dist <= 4 / length(cooks_dist), method = "lm", trControl = train.control)
+cooks_dist5 = cooks.distance(model5_all$finalModel)
+noninfl_idx5 = cooks_dist5 <= 4 / length(cooks_dist5)
+model5_without_influential = train(scope5, data = udemy_train, subset = noninfl_idx5, method = "lm", trControl = train.control)
 ```
 
+Now that we had the models trained, we wanted to compare them using a variety of different metrics, including adjusted r squared, 10-fold cross validation RMSE, weighted MAPE, AIC, and BIC. Because RMSE is biased towards larger models, we also added a column for the number of parameters in the model, so that we could compare that as well. The following code shows the calculation of these metrics, and displays the result in an easy-to-read table. More details about each section of the code could be found in the comments.
 
 ```{r}
+# Vector representing names of the models
 model_names = c('Model 1', 'Model 1 w/o outliers', 'Model 2', 'Model 2 w/o outliers', 'Model 3', 'Model 3 w/o outliers', 'Model 4', 'Model 4 w/o outliers', 'Model 5', 'Model 5 w/o outliers')
+
+# Vector representing the adjusted r squared values for each model
 adj_r_2 = c(summary(model1_all)$adj.r.squared, summary(model1_without_influential)$adj.r.squared,
             summary(model2_all)$adj.r.squared, summary(model2_without_influential)$adj.r.squared,
             summary(model3_all)$adj.r.squared, summary(model3_without_influential)$adj.r.squared,
             summary(model4_all)$adj.r.squared, summary(model4_without_influential)$adj.r.squared,
             summary(model5_all)$adj.r.squared, summary(model5_without_influential)$adj.r.squared)
 
+# Function to get the RMSE value from a model, depending on if the response is log transformed
 get_rmse = function(model, log){
   preds = if(log == TRUE) {expm1(predict(model, newdata = udemy_test))}
           else {predict(model, newdata = udemy_test)}
   sqrt(mean((preds - udemy_test$num_subscribers) ^ 2))
 }
 
+# Vector of the RMSE values
 test_rmses = c(get_rmse(model1_all, TRUE), get_rmse(model1_without_influential, TRUE),
                get_rmse(model2_all, FALSE), get_rmse(model2_without_influential, FALSE),
                get_rmse(model3_all, TRUE), get_rmse(model3_without_influential, TRUE),
                get_rmse(model4_all, TRUE), get_rmse(model4_without_influential, TRUE),
                get_rmse(model5_all, FALSE), get_rmse(model5_without_influential, FALSE)) 
   
+# Function to calculate the weighted MAPE depending on if the response is log transformed
 get_mape = function(model, log){
   preds = if(log == TRUE) {expm1(predict(model, newdata = udemy_test))}
           else {predict(model, newdata = udemy_test)}
   sum(abs(udemy_test$num_subscribers - preds)) / sum(udemy_test$num_subscribers)
 }
 
+# Vector of wMAPE values
 test_mapes = c(get_mape(model1_all, TRUE), get_mape(model1_without_influential, TRUE),
                get_mape(model2_all, FALSE), get_mape(model2_without_influential, FALSE),
                get_mape(model3_all, TRUE), get_mape(model3_without_influential, TRUE),
                get_mape(model4_all, TRUE), get_mape(model4_without_influential, TRUE),
                get_mape(model5_all, FALSE), get_mape(model5_without_influential, FALSE))
 
-get_aic = function(model, log){
-  resid = if(log == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
+# Vector of indices of non-influential points (to be used in the calculations of AIC and BIC)
+noninfl_idx = cbind(noninfl_idx1, noninfl_idx2, noninfl_idx3, noninfl_idx4, noninfl_idx5)
+
+# Function to manually calculate AIC because of log transformed responses
+get_aic = function(model, log, infl, model_num){
+  resid = if(log == TRUE & infl == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
+            else if (log == TRUE){expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[,model_num]]}
             else {resid(model)}
   n = length(resid(model))
   p = length(coef(model))
   n * log(mean(resid ^2)) + 2 * p
 }
 
-test_aic = c(get_aic(model1_all$finalModel, TRUE), get_aic(model1_without_influential$finalModel, TRUE),
-               get_aic(model2_all$finalModel, FALSE), get_aic(model2_without_influential$finalModel, FALSE),
-               get_aic(model3_all$finalModel, TRUE), get_aic(model3_without_influential$finalModel, TRUE),
-               get_aic(model4_all$finalModel, TRUE), get_aic(model4_without_influential$finalModel, TRUE),
-               get_aic(model5_all$finalModel, FALSE), get_aic(model5_without_influential$finalModel, FALSE))
+# Vector of AIC values
+test_aic = c(get_aic(model1_all$finalModel, TRUE, TRUE, 1), get_aic(model1_without_influential$finalModel, TRUE, FALSE, 1),
+               get_aic(model2_all$finalModel, FALSE, TRUE, 2), get_aic(model2_without_influential$finalModel, FALSE, FALSE, 2),
+               get_aic(model3_all$finalModel, TRUE, TRUE, 3), get_aic(model3_without_influential$finalModel, TRUE, FALSE, 3),
+               get_aic(model4_all$finalModel, TRUE, TRUE, 4), get_aic(model4_without_influential$finalModel, TRUE, FALSE, 4),
+               get_aic(model5_all$finalModel, FALSE, TRUE, 5), get_aic(model5_without_influential$finalModel, FALSE, FALSE, 5))
 
-get_bic = function(model, log){
-  resid = if(log == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
+# Function to manually calculate BIC because of the log transformed responses
+get_bic = function(model, log, infl, model_num){
+  resid = if(log == TRUE & infl == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
+            else if (log == TRUE){expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[,model_num]]}
             else {resid(model)}
   n = length(resid(model))
   p = length(coef(model))
   n * log(mean(resid ^2)) + log(n) * p
 }
 
-test_bic = c(get_bic(model1_all$finalModel, TRUE), get_bic(model1_without_influential$finalModel, TRUE),
-               get_bic(model2_all$finalModel, FALSE), get_bic(model2_without_influential$finalModel, FALSE),
-               get_bic(model3_all$finalModel, TRUE), get_bic(model3_without_influential$finalModel, TRUE),
-               get_bic(model4_all$finalModel, TRUE), get_bic(model4_without_influential$finalModel, TRUE),
-               get_bic(model5_all$finalModel, FALSE), get_bic(model5_without_influential$finalModel, FALSE))
+# Vector of BIC values
+test_bic = c(get_bic(model1_all$finalModel, TRUE, TRUE, 1), get_bic(model1_without_influential$finalModel, TRUE, FALSE, 1),
+               get_bic(model2_all$finalModel, FALSE, TRUE, 2), get_bic(model2_without_influential$finalModel, FALSE, FALSE, 2),
+               get_bic(model3_all$finalModel, TRUE, TRUE, 3), get_bic(model3_without_influential$finalModel, TRUE, FALSE, 3),
+               get_bic(model4_all$finalModel, TRUE, TRUE, 4), get_bic(model4_without_influential$finalModel, TRUE, FALSE, 4),
+               get_bic(model5_all$finalModel, FALSE, TRUE, 5), get_bic(model5_without_influential$finalModel, FALSE, FALSE, 5))
 
+# Vector representing the number of parameters in each model
 num_params = c(length(coef(model1_all$finalModel)),length(coef(model1_without_influential$finalModel)),
               length(coef(model2_all$finalModel)),length(coef(model2_without_influential$finalModel)),
               length(coef(model3_all$finalModel)),length(coef(model3_without_influential$finalModel)),
               length(coef(model4_all$finalModel)),length(coef(model4_without_influential$finalModel)),
               length(coef(model5_all$finalModel)),length(coef(model5_without_influential$finalModel)))
 
+# Putting all the data together in a table
 criterion = data.frame(
   'Criterion' = model_names,
   'Adjusted R^2' = adj_r_2,
@@ -229,7 +253,22 @@ library(knitr)
 kable(criterion)
 ```
 
+_____Some explanation for why we chose the model we did, discussing how we wanted a higher adj r2, but lower metrics for RMSE, wMAPE, AIC, and BIC. We also wanted a model that wasn't too complex._______
 
+## Results
+
+***
+*** Delete before submitting
+
+The results section should contain numerical or graphical summaries of your results. 
+
+You should report a final model you have chosen.  
+
+There is not necessarily one, singular correct model, but certainly some methods and models are better than others in certain situations. You may use any methods we studied this semester to complete this task, and provide evidence that your final choice of model is a good one.  
+
+Some possible items to be discussed: 
+
+***
 
 ```{r warning=FALSE}
 library(leaps)
@@ -304,12 +343,6 @@ get_num_params(selected_model)
 ```
 
 
-
-
-*** TBD: Higher order terms
-
-*** TBD: There appear to be outliers - investigate further and remove.
-
 ```{r}
 library(lmtest)
 bptest(selected_model)
@@ -328,23 +361,6 @@ sum(hatvalues(selected_model) > 2 * mean(hatvalues(selected_model)))
 For the Breusch-Pagan test, if we see a small p-value, we reject the null of homoscedasticity. The constant variance assumption is violated.
 
 For the Shapiro-Wilk test, the null hypothesis assumes the data were sampled from a normal distribution, thus a small p-value indicates we believe there is only a small probability the data could have been sampled from a normal distribution.
-
-
-
-## Results
-
-***
-*** Delete before submitting
-
-The results section should contain numerical or graphical summaries of your results. 
-
-You should report a final model you have chosen.  
-
-There is not necessarily one, singular correct model, but certainly some methods and models are better than others in certain situations. You may use any methods we studied this semester to complete this task, and provide evidence that your final choice of model is a good one.  
-
-Some possible items to be discussed: 
-
-***
 
 
 ## Discussion
