@@ -22,11 +22,11 @@ options(
 
 **Introduction to the data**
 
-In this project, we are working with data about different courses on the online learning platform Udemy (found [here on Kaggle](https://www.kaggle.com/datasets/andrewmvd/udemy-courses)). The dataset has 3682 records of courses, each with 12 different variables, and was created by a data scientist in Brazil on May 16, 2020. The most important are:
+In this project, we are working with data about different courses on the online learning platform Udemy (found [here on Kaggle](https://www.kaggle.com/datasets/andrewmvd/udemy-courses)). The dataset has 3,682 records of courses, each with 12 different variables, and was created by a data scientist in Brazil on May 16, 2020. The most important are:
 
 - Course title
 - Whether the course is free or paid (true or false)
-- Price of course (in Brazilian Real)
+- Price (in Brazilian Real)
 - Number of subscribers
 - Number of reviews
 - Number of lectures
@@ -39,7 +39,7 @@ Some pairs of variables are closely related, but we take that into account when 
 
 **Goal of our model**
 
-Our goal is to develop a model that can predict the number of subscribers of a course, based on other information about that course. In practice, this model could be used to predict which courses are most likely to grow more popular, giving the platform insight into which courses they may want to promote.
+Our goal is to develop a model that can predict the number of subscribers for a course, based on other information about that course. In practice, this model could be used to predict which courses are most likely to grow more popular, giving the Udemy platform insight into which courses they may want to promote.
  
 **Why we chose this dataset**
 
@@ -60,6 +60,7 @@ udemy = read_csv("udemy_courses.csv", show_col_types = FALSE)
 We then examined the features to determine which were relevant to us. The feature descriptions and our determination on their relevance are below:
 
 Response: num_subscribers
+
 Predictors:
 
 - course_id: randomized id assigned to each course (not relevant)
@@ -76,7 +77,7 @@ Predictors:
 
 ### Data Preprocessing
 
-Next, we preprocessed the data by removing irrelevant features, and coercing "level", "subject", and "is_paid" to factor variables. We also used the "published_timestamp" information to instead create a new column called "days", which represents the number of days from the course's release to the day the data was retrieved. After this new column was created, we deleted "published_timestamp". The other column we altered was the "price" column, which we converted from Brazilian Real to USD according to the exchange rate on the day of data retrieval. Finally, we removed the only course in the data that did not have any lectures or content, since that shouldn't even be a valid course on Udemy.
+Next, we preprocessed the data by removing irrelevant features, and coercing "level", "subject", and "is_paid" to factor variables. We also used the "published_timestamp" information to instead create a new column called "days", which represents the number of days from the course's release to the day the data was retrieved. After this new column was created, we removed "published_timestamp". The other column we altered was the "price" column, which we converted from Brazilian Real to USD according to the exchange rate on the day of data retrieval. Finally, we removed the only course in the data that did not have any lectures or content, since that shouldn't even be a valid course on Udemy.
 
 ```{r}
 # Removing irrelevant features
@@ -103,11 +104,12 @@ udemy = udemy[c(1:892, 894:3677), ]
 
 ### Initial Data Exploration
 
-After preprocessing the data, we wanted to explore the data a little bit more, so we looked at a summary of the dataset and plotted a few graphs that helped us better understand the relationships between our response variable, "num_subscribers", and some of the other quantitative variables. While not directly related to our model exploration, it did help us decide which features we more strongly wanted to perform a log transform on. The code and results for this section can be found in [Appendix Part A](#Part A). ____TO ADD: include why we did the "pairs" and "cor" code too! the code itself is already included in the appendix with the rest. Also a discussion on why we looked at skew_______
+After preprocessing the data, we wanted to explore the data a little bit more, so we looked at a summary of the dataset and plotted a few graphs that helped us better understand the relationships between our response variable, `num_subscribers`, and some of the other quantitative variables. While not directly related to our model exploration, these plots helped us decide which features we wanted to perform a log transformation on. We also used the skewness() function from the Moments library to determine which variables had more skew from the normal distribution and thus would be good candidates for transformations. This showed that both `content_duration` and `num_lectures` were skewed which aligns with what we found when skimming the data - a subset of courses with very large numbers of hours and lectures. Additionally, we used pairs plots and a correlation matrix to see which variables may have collinearity issues. We discovered that `content_duration` and `num_lectures` were positively correlated with each other which makes sense intuitively. 
+The code and results for this section can be found in [Appendix Part A](#Part A). 
 
 ### Model Exploration
 
-When trying to identify an ideal model, we experimented with many different combinations of predictors and used transforms, interactions, polynomial, forward/backward AIC/BIC models to try and produce the best result. We do not include this experimental code here or in the appendix because that would cause the report to become too cluttered. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transforms of the response, and others did not.
+When trying to identify an ideal model, we experimented with many different combinations of predictors and used transformations, interaction terms, polynomial terms, and models from forward/backward AIC/BIC step selection to try to produce the best result. We did not include this experimental code here or in the appendix for brevity sake. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transformations of the response and others did not.
 
 ```{r}
 scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) +
@@ -133,84 +135,44 @@ udemy_train = udemy[udemy_train_idx, ]
 udemy_test = udemy[-udemy_train_idx, ]
 ```
 
-At this point, we wanted to see if it would be beneficial to only train the models on the non-influential observations in the training set, while evaluating them on all the observations (both influential and not) later on with the testing set. We ended up training each of the 5 models in 2 ways-- once on all the training data, and once on only the non-influential points of the training data. The models trained on all the training data are referred to as "model1_all", "model2_all", etc and the models trained on only the non-influential points are called "model1_without_influential", "model2_without_influential", etc. Here, we identify influential points using the metric from class, namely all points where the Cook's Distance is greater than $4/n$, $n$ being the number of observations in the data set.
+At this point, we wanted to see if it would be beneficial to only train the models on the non-influential observations in the training set, while evaluating them on all the observations (both influential and not) later on with the testing set. We ended up training each of the 5 models in 2 ways-- once on all the training data, and once on only the non-influential points of the training data. The models trained on all the training data are referred to as "model1_all", "model2_all", etc and the models trained on only the non-influential points are called "model1_without_influential", "model2_without_influential", etc. Here, we identify influential points using the metric from class, namely all points where the Cook's Distance is greater than $4/n$, $n$ being the number of observations in the data set. More specifically, we used the `train` function from the caret library in order to fine-tune the parameters for each model by doing 10-fold cross-validation. This function outputs a final model for each model.
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 library(caret)
 train.control <- trainControl(method = "cv", number = 10)
 
-model1_all = train(scope1,
-                   data = udemy_train,
-                   method = "lm",
-                   trControl = train.control)
+model1_all = train(scope1, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist1 = cooks.distance(model1_all$finalModel)
 noninfl_idx1 = cooks_dist1 <= 4 / length(cooks_dist1)
-model1_without_influential = train(
-  scope1,
-  data = udemy_train,
-  subset = noninfl_idx1,
-  method = "lm",
-  trControl = train.control
-)
+model1_without_influential = train(scope1, data = udemy_train, subset = noninfl_idx1, method = "lm", 
+                trControl = train.control)
 
-model2_all = train(scope2,
-                   data = udemy_train,
-                   method = "lm",
-                   trControl = train.control)
+model2_all = train(scope2, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist2 = cooks.distance(model2_all$finalModel)
 noninfl_idx2 = cooks_dist2 <= 4 / length(cooks_dist2)
-model2_without_influential = train(
-  scope2,
-  data = udemy_train,
-  subset = noninfl_idx2,
-  method = "lm",
-  trControl = train.control
-)
+model2_without_influential = train(scope2, data = udemy_train, subset = noninfl_idx2, method = "lm",
+                  trControl = train.control)
 
-model3_all = train(scope3,
-                   data = udemy_train,
-                   method = "lm",
-                   trControl = train.control)
+model3_all = train(scope3, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist3 = cooks.distance(model3_all$finalModel)
 noninfl_idx3 = cooks_dist3 <= 4 / length(cooks_dist3)
-model3_without_influential = train(
-  scope3,
-  data = udemy_train,
-  subset = noninfl_idx3,
-  method = "lm",
-  trControl = train.control
-)
+model3_without_influential = train(scope3, data = udemy_train, subset = noninfl_idx3, method = "lm",
+                  trControl = train.control)
 
-model4_all = train(scope4,
-                   data = udemy_train,
-                   method = "lm",
-                   trControl = train.control)
+model4_all = train(scope4, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist4 = cooks.distance(model4_all$finalModel)
 noninfl_idx4 = cooks_dist4 <= 4 / length(cooks_dist4)
-model4_without_influential = train(
-  scope4,
-  data = udemy_train,
-  subset = noninfl_idx4,
-  method = "lm",
-  trControl = train.control
-)
+model4_without_influential = train(scope4, data = udemy_train, subset = noninfl_idx4, method = "lm",
+                  trControl = train.control)
 
-model5_all = train(scope5,
-                   data = udemy_train,
-                   method = "lm",
-                   trControl = train.control)
+model5_all = train(scope5, data = udemy_train, method = "lm", trControl = train.control)
 cooks_dist5 = cooks.distance(model5_all$finalModel)
 noninfl_idx5 = cooks_dist5 <= 4 / length(cooks_dist5)
-model5_without_influential = train(
-  scope5,
-  data = udemy_train,
-  subset = noninfl_idx5,
-  method = "lm",
-  trControl = train.control
-)
+model5_without_influential = train(scope5, data = udemy_train, subset = noninfl_idx5, method = "lm",
+                trControl = train.control)
 ```
 
-Now that we had the models trained, we wanted to compare them using a variety of different metrics, including adjusted r squared, 10-fold cross validation RMSE, weighted MAPE, AIC, and BIC. Because RMSE is biased towards larger models, we also added a column for the number of parameters in the model, so that we could compare that as well. The following code shows the calculation of these metrics, and displays the result in an easy-to-read table. More details about each section of the code could be found in the comments.
+Now that we had the models trained, we wanted to compare them using a variety of different metrics, including  adjusted $R^2$, RMSE, WAPE, AIC, and BIC. Because RMSE is biased towards larger models, we also added a column for the number of parameters in the model so that we could compare that as well. The following code shows the calculation of these metrics, and displays the result in an easy-to-read table. Since some of our models include a log transformation of the response variable while others did not, we had to write functions for most of the metrics to derive comparisons on the same scale across models. More details about each section of the code can be found in the comments.
 
 ```{r}
 # Vector representing names of the models
@@ -273,28 +235,28 @@ test_rmses = c(
 )
 
 # Function to calculate the weighted MAPE depending on if the response is log transformed
-get_mape = function(model, log) {
+get_wape = function(model, log) {
   preds = if (log == TRUE) {
     expm1(predict(model, newdata = udemy_test))
   }
   else {
     predict(model, newdata = udemy_test)
   }
-  sum(abs(udemy_test$num_subscribers - preds)) / sum(udemy_test$num_subscribers)
+  (sum(abs(udemy_test$num_subscribers - preds)) / sum(udemy_test$num_subscribers)) * 100
 }
 
-# Vector of wMAPE values
-test_mapes = c(
-  get_mape(model1_all, TRUE),
-  get_mape(model1_without_influential, TRUE),
-  get_mape(model2_all, FALSE),
-  get_mape(model2_without_influential, FALSE),
-  get_mape(model3_all, TRUE),
-  get_mape(model3_without_influential, TRUE),
-  get_mape(model4_all, TRUE),
-  get_mape(model4_without_influential, TRUE),
-  get_mape(model5_all, FALSE),
-  get_mape(model5_without_influential, FALSE)
+# Vector of WAPE values
+test_wapes = c(
+  get_wape(model1_all, TRUE),
+  get_wape(model1_without_influential, TRUE),
+  get_wape(model2_all, FALSE),
+  get_wape(model2_without_influential, FALSE),
+  get_wape(model3_all, TRUE),
+  get_wape(model3_without_influential, TRUE),
+  get_wape(model4_all, TRUE),
+  get_wape(model4_without_influential, TRUE),
+  get_wape(model5_all, FALSE),
+  get_wape(model5_without_influential, FALSE)
 )
 
 # Vector of indices of non-influential points (to be used in the calculations of AIC and BIC)
@@ -373,26 +335,13 @@ get_params = function(model){
 
 # Vector representing the number of parameters in each model
 num_params = as.double(lapply(models, get_params))
-
-# Putting all the data together in a table
-criterion = data.frame(
-  'Criterion' = model_names,
-  'Adjusted R^2' = adj_r_2,
-  'RMSE' = test_rmses,
-  'WMAPE' = test_mapes,
-  'AIC' = test_aic,
-  'BIC' = test_bic,
-  'Num Params' = num_params
-)
-library(knitr)
-kable(criterion)
 ```
 
 ### Checking Assumptions
 
 Before settling on a final model, we wanted to check how the models did with regards to the constant variance assumption (with the Breusch-Pagan test) and the normality assumption (with the Shapiro-Wilk test).
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 # Function to get BP Test p-value
 get_bp = function(model){
   signif(bptest(model$finalModel)$p.value, 2)
@@ -437,7 +386,7 @@ criterion = data.frame(
   'Criterion' = model_names,
   'Adjusted R^2' = adj_r_2,
   'RMSE' = test_rmses,
-  'WMAPE' = test_mapes,
+  'WAPE' = test_wapes,
   'AIC' = test_aic,
   'BIC' = test_bic,
   'Num Params' = num_params,
@@ -445,13 +394,29 @@ criterion = data.frame(
   'Shapiro Test' = shapiro
 )
 
+```
+
+## Results
+
+```{r}
+library(knitr)
 kable(criterion)
 ```
 
-..............Somehow justifying that these results are ok ( or just that we spent lots of time trying to increase the p values and just couldnt lol).............
-.............Also some explanation for why we chose the model we did, discussing how we wanted a higher adj r2, but lower metrics for RMSE, wMAPE, AIC, and BIC. We also wanted a model that wasn't too complex..........
+In selecting a final model we saught a balance of the following metrics:
 
-## Results
+- higher adjusted $R^2$: indicates more of the variance is explained by the model than by noise
+- lower RMSE: indicates less error between the predicted and actual values although in a biased manner
+- lower WAPE: the Weighted Absolute Error Percentage is a more unbiased metric for indicating less error between the predicted and actual values; it also works better for scenarios like ours where the actual values range from very small to quite large since traditional MAPE over-emphasizes differences for small values.
+- lower AIC: indicates a balance between errors and number of predictors used
+- lower BIC: also indicates a balance between errors and number of predictors used but penalizes larger models more
+- lower Number of Parameters: indicates the model is less complex which makes it easier to understand and interpret results
+- higher BP Test: indicates constant variance assumption is not violated
+- higher SW Test: indicates normality assumption is not violated
+
+Unfortunately none of our models produced a p-value that would pass either the Breusch-Pagan test or the Shapiro-Wilkes test. In our initial model exploration we specifically tested every model (50+) on these two tests and were never able to find a model that had a sufficiently high enough p-value. We decided to instead focus more on the other metrics represented in the table above.
+
+For most of the metrics, our models trained without outliers performed better on the test dataset than those that included outliers. 
 
 ***
 *** Delete before submitting
@@ -481,7 +446,7 @@ The discussion section should contain discussion of your results and should fram
 
 ### Appendix Part A {#PartA}
 
-```{r, warning = FALSE}
+```{r, warning = FALSE, message=FALSE}
 library(dplyr)
 glimpse(udemy)
 summary(udemy)
