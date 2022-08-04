@@ -227,19 +227,25 @@ model_names = c(
   'Model 5 w/o outliers'
 )
 
+# List of all models
+models = list(model1_all,
+              model1_without_influential,
+              model2_all,
+              model2_without_influential,
+              model3_all,
+              model3_without_influential,
+              model4_all,
+              model4_without_influential,
+              model5_all,
+              model5_without_influential)
+
+# Function to get adjusted r squared value
+get_r2 = function(model){
+  summary(model)$adj.r.squared
+}
+
 # Vector representing the adjusted r squared values for each model
-adj_r_2 = c(
-  summary(model1_all)$adj.r.squared,
-  summary(model1_without_influential)$adj.r.squared,
-  summary(model2_all)$adj.r.squared,
-  summary(model2_without_influential)$adj.r.squared,
-  summary(model3_all)$adj.r.squared,
-  summary(model3_without_influential)$adj.r.squared,
-  summary(model4_all)$adj.r.squared,
-  summary(model4_without_influential)$adj.r.squared,
-  summary(model5_all)$adj.r.squared,
-  summary(model5_without_influential)$adj.r.squared
-)
+adj_r_2 = as.double(lapply(models, get_r2))
 
 # Function to get the RMSE value from a model, depending on if the response is log transformed
 get_rmse = function(model, log) {
@@ -302,77 +308,71 @@ noninfl_idx = cbind(noninfl_idx1,
 get_aic = function(model, log, infl, model_num) {
   resid = if (log == TRUE &
               infl == TRUE) {
-    expm1(fitted(model)) - udemy_train$num_subscribers
+    expm1(fitted(model$finalModel)) - udemy_train$num_subscribers
   }
   else if (log == TRUE) {
-    expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[, model_num]]
+    expm1(fitted(model$finalModel)) - udemy_train$num_subscribers[noninfl_idx[, model_num]]
   }
   else {
-    resid(model)
+    resid(model$finalModel)
   }
-  n = length(resid(model))
-  p = length(coef(model))
+  n = length(resid(model$finalModel))
+  p = length(coef(model$finalModel))
   n * log(mean(resid ^ 2)) + 2 * p
 }
 
 # Vector of AIC values
 test_aic = c(
-  get_aic(model1_all$finalModel, TRUE, TRUE, 1),
-  get_aic(model1_without_influential$finalModel, TRUE, FALSE, 1),
-  get_aic(model2_all$finalModel, FALSE, TRUE, 2),
-  get_aic(model2_without_influential$finalModel, FALSE, FALSE, 2),
-  get_aic(model3_all$finalModel, TRUE, TRUE, 3),
-  get_aic(model3_without_influential$finalModel, TRUE, FALSE, 3),
-  get_aic(model4_all$finalModel, TRUE, TRUE, 4),
-  get_aic(model4_without_influential$finalModel, TRUE, FALSE, 4),
-  get_aic(model5_all$finalModel, FALSE, TRUE, 5),
-  get_aic(model5_without_influential$finalModel, FALSE, FALSE, 5)
+  get_aic(model1_all, TRUE, TRUE, 1),
+  get_aic(model1_without_influential, TRUE, FALSE, 1),
+  get_aic(model2_all, FALSE, TRUE, 2),
+  get_aic(model2_without_influential, FALSE, FALSE, 2),
+  get_aic(model3_all, TRUE, TRUE, 3),
+  get_aic(model3_without_influential, TRUE, FALSE, 3),
+  get_aic(model4_all, TRUE, TRUE, 4),
+  get_aic(model4_without_influential, TRUE, FALSE, 4),
+  get_aic(model5_all, FALSE, TRUE, 5),
+  get_aic(model5_without_influential, FALSE, FALSE, 5)
 )
 
 # Function to manually calculate BIC because of the log transformed responses
 get_bic = function(model, log, infl, model_num) {
   resid = if (log == TRUE &
               infl == TRUE) {
-    expm1(fitted(model)) - udemy_train$num_subscribers
+    expm1(fitted(model$finalModel)) - udemy_train$num_subscribers
   }
   else if (log == TRUE) {
-    expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[, model_num]]
+    expm1(fitted(model$finalModel)) - udemy_train$num_subscribers[noninfl_idx[, model_num]]
   }
   else {
-    resid(model)
+    resid(model$finalModel)
   }
-  n = length(resid(model))
-  p = length(coef(model))
+  n = length(resid(model$finalModel))
+  p = length(coef(model$finalModel))
   n * log(mean(resid ^ 2)) + log(n) * p
 }
 
 # Vector of BIC values
 test_bic = c(
-  get_bic(model1_all$finalModel, TRUE, TRUE, 1),
-  get_bic(model1_without_influential$finalModel, TRUE, FALSE, 1),
-  get_bic(model2_all$finalModel, FALSE, TRUE, 2),
-  get_bic(model2_without_influential$finalModel, FALSE, FALSE, 2),
-  get_bic(model3_all$finalModel, TRUE, TRUE, 3),
-  get_bic(model3_without_influential$finalModel, TRUE, FALSE, 3),
-  get_bic(model4_all$finalModel, TRUE, TRUE, 4),
-  get_bic(model4_without_influential$finalModel, TRUE, FALSE, 4),
-  get_bic(model5_all$finalModel, FALSE, TRUE, 5),
-  get_bic(model5_without_influential$finalModel, FALSE, FALSE, 5)
+  get_bic(model1_all, TRUE, TRUE, 1),
+  get_bic(model1_without_influential, TRUE, FALSE, 1),
+  get_bic(model2_all, FALSE, TRUE, 2),
+  get_bic(model2_without_influential, FALSE, FALSE, 2),
+  get_bic(model3_all, TRUE, TRUE, 3),
+  get_bic(model3_without_influential, TRUE, FALSE, 3),
+  get_bic(model4_all, TRUE, TRUE, 4),
+  get_bic(model4_without_influential, TRUE, FALSE, 4),
+  get_bic(model5_all, FALSE, TRUE, 5),
+  get_bic(model5_without_influential, FALSE, FALSE, 5)
 )
 
+# Function to get number of parameters in a model
+get_params = function(model){
+  length(coef(model$finalModel))
+}
+
 # Vector representing the number of parameters in each model
-num_params = c(
-  length(coef(model1_all$finalModel)),
-  length(coef(model1_without_influential$finalModel)),
-  length(coef(model2_all$finalModel)),
-  length(coef(model2_without_influential$finalModel)),
-  length(coef(model3_all$finalModel)),
-  length(coef(model3_without_influential$finalModel)),
-  length(coef(model4_all$finalModel)),
-  length(coef(model4_without_influential$finalModel)),
-  length(coef(model5_all$finalModel)),
-  length(coef(model5_without_influential$finalModel))
-)
+num_params = as.double(lapply(models, get_params))
 
 # Putting all the data together in a table
 criterion = data.frame(
@@ -388,7 +388,68 @@ library(knitr)
 kable(criterion)
 ```
 
-_____Some explanation for why we chose the model we did, discussing how we wanted a higher adj r2, but lower metrics for RMSE, wMAPE, AIC, and BIC. We also wanted a model that wasn't too complex._______
+### Checking Assumptions
+
+Before settling on a final model, we wanted to check how the models did with regards to the constant variance assumption (with the Breusch-Pagan test) and the normality assumption (with the Shapiro-Wilk test).
+
+```{r}
+# Function to get BP Test p-value
+get_bp = function(model){
+  signif(bptest(model$finalModel)$p.value, 2)
+}
+
+# Vector representing the BP Test p-values of each model
+library(lmtest)
+bptest = as.character(as.double(lapply(models, get_bp)))
+
+# Function to get Shapiro Test p-values
+get_shapiro = function(model, log, infl, model_num) {
+  resid = if (log == TRUE &
+              infl == TRUE) {
+    expm1(fitted(model$finalModel)) - udemy_train$num_subscribers
+  }
+  else if (log == TRUE) {
+    expm1(fitted(model$finalModel)) - udemy_train$num_subscribers[noninfl_idx[, model_num]]
+  }
+  else {
+    resid(model$finalModel)
+  }
+  signif(shapiro.test(resid)$p.value, 2)
+}
+
+# Vector containing the Shapiro test results
+shapiro = c(
+  as.character(get_shapiro(model1_all, TRUE, TRUE, 1)),
+  get_shapiro(model1_without_influential, TRUE, FALSE, 1),
+  get_shapiro(model2_all, FALSE, TRUE, 2),
+  get_shapiro(model2_without_influential, FALSE, FALSE, 2),
+  get_shapiro(model3_all, TRUE, TRUE, 3),
+  get_shapiro(model3_without_influential, TRUE, FALSE, 3),
+  get_shapiro(model4_all, TRUE, TRUE, 4),
+  get_shapiro(model4_without_influential, TRUE, FALSE, 4),
+  get_shapiro(model5_all, FALSE, TRUE, 5),
+  get_shapiro(model5_without_influential, FALSE, FALSE, 5)
+)
+
+
+# Putting all the data together in a table
+criterion = data.frame(
+  'Criterion' = model_names,
+  'Adjusted R^2' = adj_r_2,
+  'RMSE' = test_rmses,
+  'WMAPE' = test_mapes,
+  'AIC' = test_aic,
+  'BIC' = test_bic,
+  'Num Params' = num_params,
+  'BP Test' = bptest,
+  'Shapiro Test' = shapiro
+)
+
+kable(criterion)
+```
+
+..............Somehow justifying that these results are ok ( or just that we spent lots of time trying to increase the p values and just couldnt lol).............
+.............Also some explanation for why we chose the model we did, discussing how we wanted a higher adj r2, but lower metrics for RMSE, wMAPE, AIC, and BIC. We also wanted a model that wasn't too complex..........
 
 ## Results
 
