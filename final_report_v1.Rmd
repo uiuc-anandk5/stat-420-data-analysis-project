@@ -1,10 +1,10 @@
 ---
 title: "Modeling Udemy Course Popularity"
 output:
+  pdf_document: default
   html_document: 
     theme: readable
     toc: yes
-  pdf_document: default
 urlcolor: cyan
 ---
 
@@ -23,6 +23,7 @@ options(
 **Introduction to the data**
 
 In this project, we are working with data about different courses on the online learning platform Udemy (found [here on Kaggle](https://www.kaggle.com/datasets/andrewmvd/udemy-courses)). The dataset has 3682 records of courses, each with 12 different variables, and was created by a data scientist in Brazil on May 16, 2020. The most important are:
+
 - Course title
 - Whether the course is free or paid (true or false)
 - Price of course (in Brazilian Real)
@@ -33,6 +34,7 @@ In this project, we are working with data about different courses on the online 
 - Course duration (in hours)
 - Date the course was published
 - Course subject (web development, business finance, musical instruments, graphic design)
+
 Some pairs of variables are closely related, but we take that into account when building our models and completing the analysis.
 
 **Goal of our model**
@@ -50,7 +52,7 @@ All of our team members are working / have worked in education-related careers, 
 
 First, we downloaded the original data file from Kaggle, as linked in the introduction. 
 
-```{r}
+```{r warning=FALSE}
 library(readr)
 udemy = read_csv("udemy_courses.csv", show_col_types = FALSE)
 ```
@@ -59,6 +61,7 @@ We then examined the features to determine which were relevant to us. The featur
 
 Response: num_subscribers
 Predictors:
+
 - course_id: randomized id assigned to each course (not relevant)
 - course_title: title of the course (possibly relevant with some text processing, but we didn't have time to pursue this option)
 - url: url of the course (not relevant)
@@ -77,7 +80,7 @@ Next, we preprocessed the data by removing irrelevant features, and coercing "le
 
 ```{r}
 # Removing irrelevant features
-udemy = subset(udemy,select=-c(course_id,url,course_title))
+udemy = subset(udemy, select = -c(course_id, url, course_title))
 
 # Coercing level and subject to factor variables
 udemy$level = as.factor(udemy$level)
@@ -85,17 +88,17 @@ udemy$subject = as.factor(udemy$subject)
 udemy$is_paid = as.factor(udemy$is_paid)
 
 # Replacing timestamp with days since the course was released
-dates = as.Date(substr(udemy$published_timestamp,1,10))
+dates = as.Date(substr(udemy$published_timestamp, 1, 10))
 data_retrieval_date = as.Date('2020-05-16')
 udemy$days = as.integer(data_retrieval_date - dates)
-udemy = subset(udemy,select=-c(published_timestamp))
+udemy = subset(udemy, select = -c(published_timestamp))
 
 # Replacing price in BRL with price in USD according to
 #  the exchange rate of 0.1708 on 5/16/2020
 udemy$price = udemy$price * 0.1708
 
 # Removing course #893 which had no lectures or content duration
-udemy = udemy[c(1:892,894:3677),]
+udemy = udemy[c(1:892, 894:3677), ]
 ```
 
 ### Initial Data Exploration
@@ -107,10 +110,18 @@ After preprocessing the data, we wanted to explore the data a little bit more, s
 When trying to identify an ideal model, we experimented with many different combinations of predictors and used transforms, interactions, polynomial, forward/backward AIC/BIC models to try and produce the best result. We do not include this experimental code here or in the appendix because that would cause the report to become too cluttered. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transforms of the response, and others did not.
 
 ```{r}
-scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(content_duration) * log(num_lectures) + log(days) + subject + level
-scope2 = num_subscribers ~ is_paid + I(price^2) + num_reviews + I(num_lectures^2) + level + I(days^2) + subject
-scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) + log(num_lectures) + level + subject + log(days) + log(num_lectures):log(content_duration)
-scope4 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(num_lectures) + log(days) + subject
+scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) +
+  log(content_duration) * log(num_lectures) + log(days) + subject + level
+
+scope2 = num_subscribers ~ is_paid + I(price ^ 2) + num_reviews + I(num_lectures ^ 2) +
+  level + I(days ^ 2) + subject
+
+scope3 = log1p(num_subscribers) ~ is_paid + log1p(price) + log1p(num_reviews) +
+  log(num_lectures) + level + subject + log(days) + log(num_lectures):log(content_duration)
+
+scope4 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) + log(num_lectures) +
+  log(days) + subject
+
 scope5 = num_subscribers ~ num_reviews * is_paid + price + level + days + subject
 ```
 
@@ -118,8 +129,8 @@ Afterwards, we divided the data into a training set and testing set, using a 70-
 
 ```{r}
 udemy_train_idx = sample(nrow(udemy), size = trunc(0.70 * nrow(udemy)))
-udemy_train = udemy[udemy_train_idx,]
-udemy_test = udemy[-udemy_train_idx,]
+udemy_train = udemy[udemy_train_idx, ]
+udemy_test = udemy[-udemy_train_idx, ]
 ```
 
 At this point, we wanted to see if it would be beneficial to only train the models on the non-influential observations in the training set, while evaluating them on all the observations (both influential and not) later on with the testing set. We ended up training each of the 5 models in 2 ways-- once on all the training data, and once on only the non-influential points of the training data. The models trained on all the training data are referred to as "model1_all", "model2_all", etc and the models trained on only the non-influential points are called "model1_without_influential", "model2_without_influential", etc. Here, we identify influential points using the metric from class, namely all points where the Cook's Distance is greater than $4/n$, $n$ being the number of observations in the data set.
@@ -128,116 +139,240 @@ At this point, we wanted to see if it would be beneficial to only train the mode
 library(caret)
 train.control <- trainControl(method = "cv", number = 10)
 
-model1_all = train(scope1, data = udemy_train, method = "lm", trControl = train.control)
+model1_all = train(scope1,
+                   data = udemy_train,
+                   method = "lm",
+                   trControl = train.control)
 cooks_dist1 = cooks.distance(model1_all$finalModel)
 noninfl_idx1 = cooks_dist1 <= 4 / length(cooks_dist1)
-model1_without_influential = train(scope1, data = udemy_train, subset = noninfl_idx1, method = "lm", trControl = train.control)
+model1_without_influential = train(
+  scope1,
+  data = udemy_train,
+  subset = noninfl_idx1,
+  method = "lm",
+  trControl = train.control
+)
 
-model2_all = train(scope2, data = udemy_train, method = "lm", trControl = train.control)
+model2_all = train(scope2,
+                   data = udemy_train,
+                   method = "lm",
+                   trControl = train.control)
 cooks_dist2 = cooks.distance(model2_all$finalModel)
 noninfl_idx2 = cooks_dist2 <= 4 / length(cooks_dist2)
-model2_without_influential = train(scope2, data = udemy_train, subset = noninfl_idx2, method = "lm", trControl = train.control)
+model2_without_influential = train(
+  scope2,
+  data = udemy_train,
+  subset = noninfl_idx2,
+  method = "lm",
+  trControl = train.control
+)
 
-model3_all = train(scope3, data = udemy_train, method = "lm", trControl = train.control)
+model3_all = train(scope3,
+                   data = udemy_train,
+                   method = "lm",
+                   trControl = train.control)
 cooks_dist3 = cooks.distance(model3_all$finalModel)
 noninfl_idx3 = cooks_dist3 <= 4 / length(cooks_dist3)
-model3_without_influential = train(scope3, data = udemy_train, subset = noninfl_idx3, method = "lm", trControl = train.control)
+model3_without_influential = train(
+  scope3,
+  data = udemy_train,
+  subset = noninfl_idx3,
+  method = "lm",
+  trControl = train.control
+)
 
-model4_all = train(scope4, data = udemy_train, method = "lm", trControl = train.control)
+model4_all = train(scope4,
+                   data = udemy_train,
+                   method = "lm",
+                   trControl = train.control)
 cooks_dist4 = cooks.distance(model4_all$finalModel)
 noninfl_idx4 = cooks_dist4 <= 4 / length(cooks_dist4)
-model4_without_influential = train(scope4, data = udemy_train, subset = noninfl_idx4, method = "lm", trControl = train.control)
+model4_without_influential = train(
+  scope4,
+  data = udemy_train,
+  subset = noninfl_idx4,
+  method = "lm",
+  trControl = train.control
+)
 
-model5_all = train(scope5, data = udemy_train, method = "lm", trControl = train.control)
+model5_all = train(scope5,
+                   data = udemy_train,
+                   method = "lm",
+                   trControl = train.control)
 cooks_dist5 = cooks.distance(model5_all$finalModel)
 noninfl_idx5 = cooks_dist5 <= 4 / length(cooks_dist5)
-model5_without_influential = train(scope5, data = udemy_train, subset = noninfl_idx5, method = "lm", trControl = train.control)
+model5_without_influential = train(
+  scope5,
+  data = udemy_train,
+  subset = noninfl_idx5,
+  method = "lm",
+  trControl = train.control
+)
 ```
 
 Now that we had the models trained, we wanted to compare them using a variety of different metrics, including adjusted r squared, 10-fold cross validation RMSE, weighted MAPE, AIC, and BIC. Because RMSE is biased towards larger models, we also added a column for the number of parameters in the model, so that we could compare that as well. The following code shows the calculation of these metrics, and displays the result in an easy-to-read table. More details about each section of the code could be found in the comments.
 
 ```{r}
 # Vector representing names of the models
-model_names = c('Model 1', 'Model 1 w/o outliers', 'Model 2', 'Model 2 w/o outliers', 'Model 3', 'Model 3 w/o outliers', 'Model 4', 'Model 4 w/o outliers', 'Model 5', 'Model 5 w/o outliers')
+model_names = c(
+  'Model 1',
+  'Model 1 w/o outliers',
+  'Model 2',
+  'Model 2 w/o outliers',
+  'Model 3',
+  'Model 3 w/o outliers',
+  'Model 4',
+  'Model 4 w/o outliers',
+  'Model 5',
+  'Model 5 w/o outliers'
+)
 
 # Vector representing the adjusted r squared values for each model
-adj_r_2 = c(summary(model1_all)$adj.r.squared, summary(model1_without_influential)$adj.r.squared,
-            summary(model2_all)$adj.r.squared, summary(model2_without_influential)$adj.r.squared,
-            summary(model3_all)$adj.r.squared, summary(model3_without_influential)$adj.r.squared,
-            summary(model4_all)$adj.r.squared, summary(model4_without_influential)$adj.r.squared,
-            summary(model5_all)$adj.r.squared, summary(model5_without_influential)$adj.r.squared)
+adj_r_2 = c(
+  summary(model1_all)$adj.r.squared,
+  summary(model1_without_influential)$adj.r.squared,
+  summary(model2_all)$adj.r.squared,
+  summary(model2_without_influential)$adj.r.squared,
+  summary(model3_all)$adj.r.squared,
+  summary(model3_without_influential)$adj.r.squared,
+  summary(model4_all)$adj.r.squared,
+  summary(model4_without_influential)$adj.r.squared,
+  summary(model5_all)$adj.r.squared,
+  summary(model5_without_influential)$adj.r.squared
+)
 
 # Function to get the RMSE value from a model, depending on if the response is log transformed
-get_rmse = function(model, log){
-  preds = if(log == TRUE) {expm1(predict(model, newdata = udemy_test))}
-          else {predict(model, newdata = udemy_test)}
+get_rmse = function(model, log) {
+  preds = if (log == TRUE) {
+    expm1(predict(model, newdata = udemy_test))
+  }
+  else {
+    predict(model, newdata = udemy_test)
+  }
   sqrt(mean((preds - udemy_test$num_subscribers) ^ 2))
 }
 
 # Vector of the RMSE values
-test_rmses = c(get_rmse(model1_all, TRUE), get_rmse(model1_without_influential, TRUE),
-               get_rmse(model2_all, FALSE), get_rmse(model2_without_influential, FALSE),
-               get_rmse(model3_all, TRUE), get_rmse(model3_without_influential, TRUE),
-               get_rmse(model4_all, TRUE), get_rmse(model4_without_influential, TRUE),
-               get_rmse(model5_all, FALSE), get_rmse(model5_without_influential, FALSE)) 
-  
+test_rmses = c(
+  get_rmse(model1_all, TRUE),
+  get_rmse(model1_without_influential, TRUE),
+  get_rmse(model2_all, FALSE),
+  get_rmse(model2_without_influential, FALSE),
+  get_rmse(model3_all, TRUE),
+  get_rmse(model3_without_influential, TRUE),
+  get_rmse(model4_all, TRUE),
+  get_rmse(model4_without_influential, TRUE),
+  get_rmse(model5_all, FALSE),
+  get_rmse(model5_without_influential, FALSE)
+)
+
 # Function to calculate the weighted MAPE depending on if the response is log transformed
-get_mape = function(model, log){
-  preds = if(log == TRUE) {expm1(predict(model, newdata = udemy_test))}
-          else {predict(model, newdata = udemy_test)}
+get_mape = function(model, log) {
+  preds = if (log == TRUE) {
+    expm1(predict(model, newdata = udemy_test))
+  }
+  else {
+    predict(model, newdata = udemy_test)
+  }
   sum(abs(udemy_test$num_subscribers - preds)) / sum(udemy_test$num_subscribers)
 }
 
 # Vector of wMAPE values
-test_mapes = c(get_mape(model1_all, TRUE), get_mape(model1_without_influential, TRUE),
-               get_mape(model2_all, FALSE), get_mape(model2_without_influential, FALSE),
-               get_mape(model3_all, TRUE), get_mape(model3_without_influential, TRUE),
-               get_mape(model4_all, TRUE), get_mape(model4_without_influential, TRUE),
-               get_mape(model5_all, FALSE), get_mape(model5_without_influential, FALSE))
+test_mapes = c(
+  get_mape(model1_all, TRUE),
+  get_mape(model1_without_influential, TRUE),
+  get_mape(model2_all, FALSE),
+  get_mape(model2_without_influential, FALSE),
+  get_mape(model3_all, TRUE),
+  get_mape(model3_without_influential, TRUE),
+  get_mape(model4_all, TRUE),
+  get_mape(model4_without_influential, TRUE),
+  get_mape(model5_all, FALSE),
+  get_mape(model5_without_influential, FALSE)
+)
 
 # Vector of indices of non-influential points (to be used in the calculations of AIC and BIC)
-noninfl_idx = cbind(noninfl_idx1, noninfl_idx2, noninfl_idx3, noninfl_idx4, noninfl_idx5)
+noninfl_idx = cbind(noninfl_idx1,
+                    noninfl_idx2,
+                    noninfl_idx3,
+                    noninfl_idx4,
+                    noninfl_idx5)
 
 # Function to manually calculate AIC because of log transformed responses
-get_aic = function(model, log, infl, model_num){
-  resid = if(log == TRUE & infl == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
-            else if (log == TRUE){expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[,model_num]]}
-            else {resid(model)}
+get_aic = function(model, log, infl, model_num) {
+  resid = if (log == TRUE &
+              infl == TRUE) {
+    expm1(fitted(model)) - udemy_train$num_subscribers
+  }
+  else if (log == TRUE) {
+    expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[, model_num]]
+  }
+  else {
+    resid(model)
+  }
   n = length(resid(model))
   p = length(coef(model))
-  n * log(mean(resid ^2)) + 2 * p
+  n * log(mean(resid ^ 2)) + 2 * p
 }
 
 # Vector of AIC values
-test_aic = c(get_aic(model1_all$finalModel, TRUE, TRUE, 1), get_aic(model1_without_influential$finalModel, TRUE, FALSE, 1),
-               get_aic(model2_all$finalModel, FALSE, TRUE, 2), get_aic(model2_without_influential$finalModel, FALSE, FALSE, 2),
-               get_aic(model3_all$finalModel, TRUE, TRUE, 3), get_aic(model3_without_influential$finalModel, TRUE, FALSE, 3),
-               get_aic(model4_all$finalModel, TRUE, TRUE, 4), get_aic(model4_without_influential$finalModel, TRUE, FALSE, 4),
-               get_aic(model5_all$finalModel, FALSE, TRUE, 5), get_aic(model5_without_influential$finalModel, FALSE, FALSE, 5))
+test_aic = c(
+  get_aic(model1_all$finalModel, TRUE, TRUE, 1),
+  get_aic(model1_without_influential$finalModel, TRUE, FALSE, 1),
+  get_aic(model2_all$finalModel, FALSE, TRUE, 2),
+  get_aic(model2_without_influential$finalModel, FALSE, FALSE, 2),
+  get_aic(model3_all$finalModel, TRUE, TRUE, 3),
+  get_aic(model3_without_influential$finalModel, TRUE, FALSE, 3),
+  get_aic(model4_all$finalModel, TRUE, TRUE, 4),
+  get_aic(model4_without_influential$finalModel, TRUE, FALSE, 4),
+  get_aic(model5_all$finalModel, FALSE, TRUE, 5),
+  get_aic(model5_without_influential$finalModel, FALSE, FALSE, 5)
+)
 
 # Function to manually calculate BIC because of the log transformed responses
-get_bic = function(model, log, infl, model_num){
-  resid = if(log == TRUE & infl == TRUE) {expm1(fitted(model)) - udemy_train$num_subscribers}
-            else if (log == TRUE){expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[,model_num]]}
-            else {resid(model)}
+get_bic = function(model, log, infl, model_num) {
+  resid = if (log == TRUE &
+              infl == TRUE) {
+    expm1(fitted(model)) - udemy_train$num_subscribers
+  }
+  else if (log == TRUE) {
+    expm1(fitted(model)) - udemy_train$num_subscribers[noninfl_idx[, model_num]]
+  }
+  else {
+    resid(model)
+  }
   n = length(resid(model))
   p = length(coef(model))
-  n * log(mean(resid ^2)) + log(n) * p
+  n * log(mean(resid ^ 2)) + log(n) * p
 }
 
 # Vector of BIC values
-test_bic = c(get_bic(model1_all$finalModel, TRUE, TRUE, 1), get_bic(model1_without_influential$finalModel, TRUE, FALSE, 1),
-               get_bic(model2_all$finalModel, FALSE, TRUE, 2), get_bic(model2_without_influential$finalModel, FALSE, FALSE, 2),
-               get_bic(model3_all$finalModel, TRUE, TRUE, 3), get_bic(model3_without_influential$finalModel, TRUE, FALSE, 3),
-               get_bic(model4_all$finalModel, TRUE, TRUE, 4), get_bic(model4_without_influential$finalModel, TRUE, FALSE, 4),
-               get_bic(model5_all$finalModel, FALSE, TRUE, 5), get_bic(model5_without_influential$finalModel, FALSE, FALSE, 5))
+test_bic = c(
+  get_bic(model1_all$finalModel, TRUE, TRUE, 1),
+  get_bic(model1_without_influential$finalModel, TRUE, FALSE, 1),
+  get_bic(model2_all$finalModel, FALSE, TRUE, 2),
+  get_bic(model2_without_influential$finalModel, FALSE, FALSE, 2),
+  get_bic(model3_all$finalModel, TRUE, TRUE, 3),
+  get_bic(model3_without_influential$finalModel, TRUE, FALSE, 3),
+  get_bic(model4_all$finalModel, TRUE, TRUE, 4),
+  get_bic(model4_without_influential$finalModel, TRUE, FALSE, 4),
+  get_bic(model5_all$finalModel, FALSE, TRUE, 5),
+  get_bic(model5_without_influential$finalModel, FALSE, FALSE, 5)
+)
 
 # Vector representing the number of parameters in each model
-num_params = c(length(coef(model1_all$finalModel)),length(coef(model1_without_influential$finalModel)),
-              length(coef(model2_all$finalModel)),length(coef(model2_without_influential$finalModel)),
-              length(coef(model3_all$finalModel)),length(coef(model3_without_influential$finalModel)),
-              length(coef(model4_all$finalModel)),length(coef(model4_without_influential$finalModel)),
-              length(coef(model5_all$finalModel)),length(coef(model5_without_influential$finalModel)))
+num_params = c(
+  length(coef(model1_all$finalModel)),
+  length(coef(model1_without_influential$finalModel)),
+  length(coef(model2_all$finalModel)),
+  length(coef(model2_without_influential$finalModel)),
+  length(coef(model3_all$finalModel)),
+  length(coef(model3_without_influential$finalModel)),
+  length(coef(model4_all$finalModel)),
+  length(coef(model4_without_influential$finalModel)),
+  length(coef(model5_all$finalModel)),
+  length(coef(model5_without_influential$finalModel))
+)
 
 # Putting all the data together in a table
 criterion = data.frame(
@@ -270,98 +405,6 @@ Some possible items to be discussed:
 
 ***
 
-```{r warning=FALSE}
-library(leaps)
-library(lmtest)
-
-get_bp_decision = function(model, alpha) {
-  decide = unname(bptest(model)$p.value < alpha)
-  ifelse(decide, "Reject", "Fail to Reject")
-}
-
-get_sw_decision = function(model, alpha) {
-  decide = unname(shapiro.test(resid(model))$p.value < alpha)
-  ifelse(decide, "Reject", "Fail to Reject")
-}
-
-get_num_params = function(model) {
-  length(coef(model))
-}
-
-get_loocv_rmse = function(model) {
-  sqrt(mean((resid(model) / (
-    1 - hatvalues(model)
-  )) ^ 2))
-}
-
-get_adj_r2 = function(model) {
-  summary(model)$adj.r.squared
-}
-
-n = nrow(udemy)
-
-udemy_model_dredge = lm(
-  num_subscribers ~ is_paid + price + num_reviews +
-    level + days + subject,
-  data = udemy,
-  na.action = na.fail
-)
-
-library(MuMIn)
-combinations = dredge(
-  udemy_model_dredge,
-  extra = list(
-    bptest = function(x)
-      if (length(x$coefficients) > 1) {
-        bptest(x)$p.value
-      },
-    
-    loocv_rmse = function(x)
-      get_loocv_rmse(x),
-    
-    adj_r2 = function(x)
-      get_adj_r2(x)
-    
-  )
-)
-
-
-#Anand note - Select first result matching criteria (after sorting by bptest and filtering on
-#loocv_rmse, adj_r2, and df in combinations dataframe)
-#This is not necessarily the best model - just using a placeholder - need to try various transformations
-selected_model = lm(
-  num_subscribers ~ is_paid + price + num_reviews +
-    level + days + subject,
-  data = udemy
-)
-
-get_loocv_rmse(selected_model)
-get_adj_r2(selected_model)
-get_bp_decision(selected_model, alpha = 0.01)
-get_num_params(selected_model)
-
-```
-
-
-```{r}
-library(lmtest)
-bptest(selected_model)
-
-shapiro.test(resid(selected_model))
-
-plot(fitted(selected_model), resid(selected_model), col = "dodgerblue",
-     pch = 20, cex = 1.5, xlab = "Fitted", ylab = "Residuals")
-abline(h = 0, lty = 2, col = "darkorange", lwd = 2)
-
-#Points of large leverage
-sum(hatvalues(selected_model) > 2 * mean(hatvalues(selected_model)))
-
-```
-
-For the Breusch-Pagan test, if we see a small p-value, we reject the null of homoscedasticity. The constant variance assumption is violated.
-
-For the Shapiro-Wilk test, the null hypothesis assumes the data were sampled from a normal distribution, thus a small p-value indicates we believe there is only a small probability the data could have been sampled from a normal distribution.
-
 
 ## Discussion
 
@@ -387,11 +430,16 @@ pairs(udemy, col = "dodgerblue")
 
 # Correlation Matrix
 library(ggcorrplot)
-model.matrix(~0+., data=udemy) %>% 
-  cor(use="pairwise.complete.obs") %>% 
-  ggcorrplot(show.diag = F, type="lower", lab=TRUE, lab_size=2)
+model.matrix( ~ 0 + ., data = udemy) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  ggcorrplot(
+    show.diag = F,
+    type = "lower",
+    lab = TRUE,
+    lab_size = 2
+  )
 
-# Checking which variables have a lot of skew from normal 
+# Checking which variables have a lot of skew from normal
 library(moments)
 skewness(udemy$days)
 skewness(udemy$content_duration)
@@ -399,25 +447,45 @@ skewness(udemy$price)
 skewness(udemy$num_lectures)
 
 # Plots relating different predictors to the response
-plot(x = udemy$price, y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Price", 
-     xlab = "Price (in USD)", ylab = "Log Number of Subscribers")
+plot(
+  x = udemy$price,
+  y = log(udemy$num_subscribers),
+  main = "Log Number of Subscribers vs. Price",
+  xlab = "Price (in USD)",
+  ylab = "Log Number of Subscribers"
+)
 
-plot(x = log(udemy$num_reviews), y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Log Number of Reviews", 
-     xlab = "Log Number of Reviews", ylab = "Log Number of Subscribers")
+plot(
+  x = log(udemy$num_reviews),
+  y = log(udemy$num_subscribers),
+  main = "Log Number of Subscribers vs. Log Number of Reviews",
+  xlab = "Log Number of Reviews",
+  ylab = "Log Number of Subscribers"
+)
 
-plot(x = log(udemy$num_lectures), y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Log Number of Lectures", 
-     xlab = "Log Number of Lectures", ylab = "Log Number of Subscribers")
+plot(
+  x = log(udemy$num_lectures),
+  y = log(udemy$num_subscribers),
+  main = "Log Number of Subscribers vs. Log Number of Lectures",
+  xlab = "Log Number of Lectures",
+  ylab = "Log Number of Subscribers"
+)
 
-plot(x = log(udemy$content_duration), y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Log Content Duration", 
-     xlab = "Log Content Duration (in Hours)", ylab = "Log Number of Subscribers")
+plot(
+  x = log(udemy$content_duration),
+  y = log(udemy$num_subscribers),
+  main = "Log Number of Subscribers vs. Log Content Duration",
+  xlab = "Log Content Duration (in Hours)",
+  ylab = "Log Number of Subscribers"
+)
 
-plot(x = udemy$days, y = log(udemy$num_subscribers),
-     main = "Log Number of Subscribers vs. Days Since Release", 
-     xlab = "Number of Days Since Course Release", ylab = "Log Number of Subscribers")
+plot(
+  x = udemy$days,
+  y = log(udemy$num_subscribers),
+  main = "Log Number of Subscribers vs. Days Since Release",
+  xlab = "Number of Days Since Course Release",
+  ylab = "Log Number of Subscribers"
+)
 ```
 
 Group Members: Amanda Wang, Anand Kumar, Dani Richmond
