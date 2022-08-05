@@ -59,7 +59,7 @@ udemy = read_csv("udemy_courses.csv", show_col_types = FALSE)
 
 We then examined the features to determine which were relevant to us. The feature descriptions and our determination on their relevance are below:
 
-Response: num_subscribers
+Response: num_subscribers: number of subscribers for each course as of 5/16/20
 
 Predictors:
 
@@ -105,7 +105,7 @@ udemy = udemy[c(1:892, 894:3677), ]
 ### Initial Data Exploration
 
 After preprocessing the data, we wanted to explore the data a little bit more, so we looked at a summary of the dataset and plotted a few graphs that helped us better understand the relationships between our response variable, `num_subscribers`, and some of the other quantitative variables. While not directly related to our model exploration, these plots helped us decide which features we wanted to perform a log transformation on. We also used the skewness() function from the Moments library to determine which variables had more skew from the normal distribution and thus would be good candidates for transformations. This showed that both `content_duration` and `num_lectures` were skewed which aligns with what we found when skimming the data - a subset of courses with very large numbers of hours and lectures. Additionally, we used pairs plots and a correlation matrix to see which variables may have collinearity issues. We discovered that `content_duration` and `num_lectures` were positively correlated with each other which makes sense intuitively. 
-The code and results for this section can be found in [Appendix Part A](#Part A). 
+The code and results for this section can be found in the [appendix](#Appendix). 
 
 ### Model Exploration
 
@@ -430,7 +430,7 @@ In selecting a final model we sought a balance of the following metrics:
 - higher BP Test: indicates constant variance assumption is not violated
 - higher SW Test: indicates normality assumption is not violated
 
-Unfortunately none of our models produced a p-value that would pass either the Breusch-Pagan test or the Shapiro-Wilkes test. In our initial model exploration we specifically tested every model (50+) on these two tests and were never able to find a model that had a sufficiently high enough p-value. When we plotted a fitted vs residuals plot and a Normal Q-Q plot for all of the models, model 4 without outliers seemed the most promising (see graphs below). However, since the Breusch-Pagan test and Shapiro-Wilkes test were so low for all models we decided to instead focus more on the other metrics represented in the table above.
+Unfortunately none of our models produced a p-value that would pass either the Breusch-Pagan test or the Shapiro-Wilkes test. In our initial model exploration we specifically tested every model (50+) on these two tests and were never able to find a model that had a sufficiently high p-value. When we plotted a fitted vs residuals plot and a Normal Q-Q plot for all of the models, model 4 without outliers seemed the most promising (see graphs below). However, since the Breusch-Pagan test and Shapiro-Wilkes test were so low for all models we decided to instead focus more on the other metrics represented in the table above.
 
 ```{r}
 # fitted vs residual plots and Q-Q plots
@@ -489,32 +489,15 @@ plot_qq(model5_without_influential, pointcol = "grey", linecol = "#AA0000")
 
 ``` 
 
-***
-*** Delete before submitting
-
-The results section should contain numerical or graphical summaries of your results. 
-
-You should report a final model you have chosen.  
-
-There is not necessarily one, singular correct model, but certainly some methods and models are better than others in certain situations. You may use any methods we studied this semester to complete this task, and provide evidence that your final choice of model is a good one.  
-
-Some possible items to be discussed: 
-
-***
-
 ## Discussion
 
-***
-*** Delete before submitting
+Our goal was to find a model to predict the number of subscribers for a MOOC course on the Udemy platform based on several characteristics of the course. Unfortunately we were unable to find a model that would be a great predictor based on the metrics we used for comparing models. More specifically, finding a model that did not violate the constant variance and normality assumptions proved elusive using only the techniques we learned about in class.
 
-The discussion section should contain discussion of your results and should frame your results in the context of the data.  
-- How is your final model useful? 
+However, we think our final model could still be useful for predicting a range for the number of subscribers for a MOOC course. It could also be used to predict the general popularity level of the course, which would be helpful to the Udemy platform since they might just want to know which courses to advertise. Additionally, our research altogether could be used as a launching point for further analysis to derive a better model using additional techniques beyond the scope of our class. For instance, there could be other transformations that we could have applied. In addition, our model might have been significantly improved if we had a dataset with additional features, like number of "views" of the course landing page in the last 30 days. 
 
-***
+All in all, we're very content with our model's results, and we're confident that if we were armed with more techniques and a wider range of features, we could have done an even better job predicting Udemy course popularity.
 
-## Appendix
-
-### Appendix Part A {#PartA}
+## Appendix {#Appendix}
 
 ```{r, warning = FALSE, message=FALSE}
 library(dplyr)
