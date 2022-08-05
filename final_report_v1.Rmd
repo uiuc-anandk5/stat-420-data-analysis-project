@@ -77,7 +77,7 @@ Predictors:
 
 ### Data Preprocessing
 
-Next, we preprocessed the data by removing irrelevant features, and coercing "level", "subject", and "is_paid" to factor variables. We also used the "published_timestamp" information to instead create a new column called "days", which represents the number of days from the course's release to the day the data was retrieved. After this new column was created, we removed "published_timestamp". The other column we altered was the "price" column, which we converted from Brazilian Real to USD according to the exchange rate on the day of data retrieval. Finally, we removed the only course in the data that did not have any lectures or content, since that shouldn't even be a valid course on Udemy.
+Next, we preprocessed the data by removing irrelevant features, and coercing "level", "subject", and "is_paid" to factor variables. We also used the "published_timestamp" information to instead create a new column called "days", which represents the number of days from the course's release to the day the data was retrieved. After this new column was created, we removed "published_timestamp". The other column we altered was the "price" column, which we converted from Brazilian Real to USD according to the exchange rate on the day of data extraction. Finally, we removed the only course in the data that did not have any lectures or content, since that shouldn't even be a valid course on Udemy.
 
 ```{r}
 # Removing irrelevant features
@@ -105,11 +105,11 @@ udemy = udemy[c(1:892, 894:3677), ]
 ### Initial Data Exploration
 
 After preprocessing the data, we wanted to explore the data a little bit more, so we looked at a summary of the dataset and plotted a few graphs that helped us better understand the relationships between our response variable, `num_subscribers`, and some of the other quantitative variables. While not directly related to our model exploration, these plots helped us decide which features we wanted to perform a log transformation on. We also used the skewness() function from the Moments library to determine which variables had more skew from the normal distribution and thus would be good candidates for transformations. This showed that both `content_duration` and `num_lectures` were skewed which aligns with what we found when skimming the data - a subset of courses with very large numbers of hours and lectures. Additionally, we used pairs plots and a correlation matrix to see which variables may have collinearity issues. We discovered that `content_duration` and `num_lectures` were positively correlated with each other which makes sense intuitively. 
-The code and results for this section can be found in the [appendix](#Appendix). 
+The code and results for this section can be found in the [Appendix](#Appendix). 
 
 ### Model Exploration
 
-When trying to identify an ideal model, we experimented with many different combinations of predictors and used transformations, interaction terms, polynomial terms, and models from forward/backward AIC/BIC step selection to try to produce the best result. We did not include this experimental code here or in the appendix for brevity sake. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transformations of the response and others did not.
+When trying to identify an ideal model, we experimented with many different combinations of predictors and used transformations, interaction terms, polynomial terms, and models from forward/backward AIC/BIC step selection to try to produce the best result. We did not include this experimental code here or in the appendix for brevity's sake. In the end, we came up with the following 5 combinations of response & predictors (labeled in the code as "scope1", "scope2", etc.). Some of these used log transformations of the response and others did not.
 
 ```{r}
 scope1 = log1p(num_subscribers) ~ log1p(price) + log1p(num_reviews) +
