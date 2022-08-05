@@ -1,10 +1,10 @@
 ---
 title: "Modeling Udemy Course Popularity"
 output:
-  pdf_document: default
   html_document: 
     theme: readable
     toc: yes
+  pdf_document: default
 urlcolor: cyan
 ---
 
@@ -430,6 +430,45 @@ There is not necessarily one, singular correct model, but certainly some methods
 Some possible items to be discussed: 
 
 ***
+
+```{r}
+calc_weights = function(min_or_max,values,weight) {
+  
+  if(min_or_max == "min") {
+    extrema =  ( 1 / ( values / min(values) ) ) * weight
+  } else {
+    extrema = ( values / max(values) ) * weight
+  }
+  
+  extrema
+}
+
+weighted_adj_r_2 = calc_weights("max", adj_r_2, 0.25) # 25%
+weighted_test_rmses = calc_weights("min", test_rmses, 0.0) # 0%
+weighted_test_wapes = calc_weights("min", test_wapes, 0.25) # 25%
+weighted_test_aic = calc_weights("min", test_aic, (0.50/3) ) # 16.67%
+weighted_test_bic = calc_weights("min", test_bic, (0.50/3) ) # 16.67%
+weighted_num_params = calc_weights("min", num_params, (0.50/3) ) # 16.67%
+
+weighted_sum = weighted_adj_r_2 + weighted_test_rmses + weighted_test_wapes + 
+  weighted_test_aic  + weighted_test_bic  + weighted_num_params
+
+# Putting all the data together in a table
+criterion = data.frame(
+  'Model' = model_names,
+  'W Adj R^2' = weighted_adj_r_2,
+  'W RMSE' = weighted_test_rmses,
+  'W WAPE' = weighted_test_wapes,
+  'W AIC' = weighted_test_aic,
+  'W BIC' = weighted_test_bic,
+  'W Num Params' = weighted_num_params,
+  'Weighted Total' = weighted_sum
+)
+library(knitr)
+kable(criterion)
+```
+
+
 
 
 ## Discussion
