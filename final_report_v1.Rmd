@@ -396,6 +396,22 @@ criterion = data.frame(
 
 ```
 
+```{r, echo = FALSE}
+#helper functions for plotting
+plot_fitted_resid = function(model, pointcol = "dodgerblue", linecol = "darkorange") {
+      plot(fitted(model), resid(model), 
+      main = "Fitted vs Residuals Plot",
+      col = pointcol, pch = 20, cex = 1.5,
+      xlab = "Fitted", ylab = "Residuals")
+  abline(h = 0, col = linecol, lwd = 2)
+}
+
+plot_qq = function(model, pointcol = "dodgerblue", linecol = "darkorange") {
+  qqnorm(resid(model), col = pointcol, pch = 20, cex = 1.5)
+  qqline(resid(model), col = linecol, lwd = 2)
+}
+```
+
 ## Results
 
 ```{r}
@@ -403,33 +419,28 @@ library(knitr)
 kable(criterion)
 ```
 
-In selecting a final model we saught a balance of the following metrics:
+In selecting a final model we sought a balance of the following metrics:
 
 - higher adjusted $R^2$: indicates more of the variance is explained by the model than by noise
 - lower RMSE: indicates less error between the predicted and actual values although in a biased manner
-- lower WAPE: the Weighted Absolute Error Percentage is a more unbiased metric for indicating less error between the predicted and actual values; it also works better for scenarios like ours where the actual values range from very small to quite large since traditional MAPE over-emphasizes differences for small values.
+- lower WAPE: the Weighted Absolute Error Percentage is a more unbiased metric for indicating less error between the predicted and actual values; it also works better for scenarios like ours where the actual values range from very small to quite large since traditional MAPE over-emphasizes differences for small values
 - lower AIC: indicates a balance between errors and number of predictors used
 - lower BIC: also indicates a balance between errors and number of predictors used but penalizes larger models more
 - lower Number of Parameters: indicates the model is less complex which makes it easier to understand and interpret results
 - higher BP Test: indicates constant variance assumption is not violated
 - higher SW Test: indicates normality assumption is not violated
 
-Unfortunately none of our models produced a p-value that would pass either the Breusch-Pagan test or the Shapiro-Wilkes test. In our initial model exploration we specifically tested every model (50+) on these two tests and were never able to find a model that had a sufficiently high enough p-value. We decided to instead focus more on the other metrics represented in the table above.
+Unfortunately none of our models produced a p-value that would pass either the Breusch-Pagan test or the Shapiro-Wilkes test. In our initial model exploration we specifically tested every model (50+) on these two tests and were never able to find a model that had a sufficiently high enough p-value. When we plotted a fitted vs residuals plot and a Normal Q-Q plot for all of the models, model 4 without outliers seemed the most promising (see graphs below). However, since the Breusch-Pagan test and Shapiro-Wilkes test were so low for all models we decided to instead focus more on the other metrics represented in the table above.
 
-For most of the metrics, our models trained without outliers performed better on the test dataset than those that included outliers. 
+```{r}
+# fitted vs residual plots and Q-Q plots
+par(mfrow = c(1,2))
+plot_fitted_resid(model4_without_influential, pointcol = "grey", linecol = "#AA0000")
+plot_qq(model4_without_influential, pointcol = "grey", linecol = "#AA0000")
 
-***
-*** Delete before submitting
+```
 
-The results section should contain numerical or graphical summaries of your results. 
-
-You should report a final model you have chosen.  
-
-There is not necessarily one, singular correct model, but certainly some methods and models are better than others in certain situations. You may use any methods we studied this semester to complete this task, and provide evidence that your final choice of model is a good one.  
-
-Some possible items to be discussed: 
-
-***
+For most of the metrics, our models trained without outliers performed better on the test dataset than those that included outliers so we anticipated one of those being our final model. We also anticipated our final model being one with log transformations given the skew we saw for several variables and our response in our initial analysis of the data. In order to select our final model we did a weighted score for each model based on the following - 50% of weight split between adjusted $R^2$ and WAPE and 50% of weight split between number of parameters, AIC, & BIC. The best model based on weighted score is model 5 trained without outliers (see table below of weighted scores for each model). This fits our first expectation that the best model would be one trained without outliers but it did not fit our second expectation as this model does not have any log transformations. Another benefit of model 5 (with or without outliers) that can't be quantified, per se, is that it is simpler to explain - the lack of transformations make it a more straightforward model and the impact of each variable on the response is easier to interpret.
 
 ```{r}
 calc_weights = function(min_or_max,values,weight) {
@@ -468,8 +479,28 @@ library(knitr)
 kable(criterion)
 ```
 
+Below are a fitted vs residuals plot and a Normal Q-Q Plot for model 5 without outliers. These graphs show that normality and constant variance assumptions are suspect but based on the other metrics and that it is a more straightforward model we decided to move forward with this as our selected model.
 
+```{r}
+# fitted vs residual plots and Q-Q plots
+par(mfrow = c(1,2))
+plot_fitted_resid(model5_without_influential, pointcol = "grey", linecol = "#AA0000")
+plot_qq(model5_without_influential, pointcol = "grey", linecol = "#AA0000")
 
+``` 
+
+***
+*** Delete before submitting
+
+The results section should contain numerical or graphical summaries of your results. 
+
+You should report a final model you have chosen.  
+
+There is not necessarily one, singular correct model, but certainly some methods and models are better than others in certain situations. You may use any methods we studied this semester to complete this task, and provide evidence that your final choice of model is a good one.  
+
+Some possible items to be discussed: 
+
+***
 
 ## Discussion
 
